@@ -4,7 +4,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -23,7 +23,20 @@ class Gestpay_S2S {
 
         include_once 'class-gestpay-subscriptions.php';
         $this->Subscr = new Gestpay_Subscriptions( $gestpay );
-        
+
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+
+    }
+
+    /**
+     * Enqueue additional Javascript
+     */
+    public function enqueue_scripts() {
+
+        $fancybox_path = $this->Helper->plugin_url . 'lib/jquery.fancybox';
+        wp_enqueue_style( 'gestpay-for-woocommerce-fancybox-css', $fancybox_path . '.min.css' );
+        wp_enqueue_script( 'gestpay-for-woocommerce-fancybox-js', $fancybox_path . '.min.js', array( 'jquery' ), WC_VERSION, true );
+
     }
 
     /**
@@ -88,7 +101,7 @@ class Gestpay_S2S {
             | ----------------------------------------------------------------------------------------------------------
             | == Transactions made with 3D-Secure cards ==
             | = Phase I: authorization request =
-            | 
+            |
             | A standard authorization request is made. If the card is recognised as 3D, the outcome of the
             | request is a specific error code (8006) which is readable by means of the ErrorCode
             | method. The error description (Verified By Visa) will be readable by means of the
@@ -140,7 +153,7 @@ class Gestpay_S2S {
             | ----------------------------------------------------------------------------------------------------------
             | == Transactions made with 3D-Secure cards ==
             | = Phase II: cardholder authentication =
-            | 
+            |
             | In this phase it is necessary to allow the buyer to authenticate him/herself to the credit card
             | issuer. The buyer's browser must be redirected to a specific page on the Gestpay
             | website which will act as an interface for authentication and to direct the buyer to the
@@ -189,7 +202,7 @@ class Gestpay_S2S {
             | ----------------------------------------------------------------------------------------------------------
             | == Transactions made with 3D-Secure cards ==
             | = Phase III: conclusion of transaction =
-            | 
+            |
             | At this stage the merchant is in possession of all of the information required to conclude
             | the transaction. A new authorization request must be made (by using the CallPagamS2S method).
             | However, before using again such call, it is necessary to assign to WSs2s all of the
@@ -221,7 +234,7 @@ class Gestpay_S2S {
     }
 
     public function get_token( $order ) {
-        
+
         // Use the selected token if any
         $token = $this->Helper->get_post( 'gestpay-s2s-cc-token' );
         $order_id = $this->Helper->order_get( $order, 'id' );
@@ -240,7 +253,7 @@ class Gestpay_S2S {
             $response = $this->s2s_token_request( $order );
 
             if ( ! empty( $response['token'] ) ) {
-          
+
                 // Store the token in the order
                 update_post_meta( $order_id, GESTPAY_META_TOKEN, $response['token'] );
 
@@ -275,7 +288,7 @@ class Gestpay_S2S {
         $params->expiryMonth   = $this->Helper->get_post( 'gestpay-cc-exp-month' );
         $params->expiryYear    = $this->Helper->get_post( 'gestpay-cc-exp-year' );  // 2 digits
         $params->withAuth      = 'Y';
-    
+
         // Maybe send also the CVV field.
         if ( $this->Gestpay->is_cvv_required ) {
             $params->cvv = $this->Helper->get_post( 'gestpay-cc-cvv' );

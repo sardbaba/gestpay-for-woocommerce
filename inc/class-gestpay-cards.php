@@ -4,7 +4,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -45,7 +45,7 @@ class Gestpay_Cards {
      * Endpoint HTML content.
      */
     public function endpoint_content() {
-        
+
         // Variables used inside the template "my-cards"
 
         $trans_str  = $this->Gestpay->strings;
@@ -127,6 +127,6 @@ class Gestpay_Cards {
         }
 
         wp_die();
-        
+
     }
 }

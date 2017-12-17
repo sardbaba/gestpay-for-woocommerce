@@ -165,3 +165,24 @@ msgstr "Pagamento in corso..."
 
 msgid "Error: Browser not supported"
 msgstr "Errore: il tuo browser non è supportato"
+
+msgid "Where do I find the security code?"
+msgstr "Dove trovo il codice di sicurezza?"
+
+msgid "Security code"
+msgstr "Codice di sicurezza"
+
+msgid "The security code (CVV2 or 4DDBC) is a number consisting of three or four digits kept separated from the main number of your credit card. The position of the security code may vary depending on the company that issued your credit card."
+msgstr "Il codice di sicurezza è un numero formato da tre o quattro cifre separato dal numero principale della carta di credito. La posizione del codice di sicurezza può variare a seconda della compagnia a cui appartiene la carta di credito."
+
+msgid "Visa / Mastercard / Maestro"
+msgstr ""
+
+msgid "For Visa and Mastercard the three-digit security number (CVV2) is printed on the back of the card right after the card number."
+msgstr "Per le compagnie Visa e Mastercard il codice di sicurezza a tre cifre è stampato sul retro della carta subito dopo il numero principale della carta."
+
+msgid "American Express"
+msgstr ""
+
+msgid "For American Express cards the four-digit security code (4DBC) is printed on the front of the card, either to the left or right of the American Express card number."
+msgstr "Per la compagnia American Express il codice di sicurezza a quattro cifre è stampato sul lato anteriore della carta a destra o a sinistra del numero principale della carta."

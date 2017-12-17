@@ -2,7 +2,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -164,4 +164,30 @@ div.gestpay-form .form-wrap label {
     position: absolute;
     top: 50%;
     width: 100px;
+}
+
+#gestpay-cc-cvv_field input {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+#gestpay-fancybox-cvv-modal {
+    width: 50%;
+}
+
+.gestpay-fancybox-section {
+    float: left;
+    width: 90%;
+    padding: 10px 5%;
+}
+
+.gestpay-fancybox-cvv-textcard-text {
+    float: left;
+    width: 68%;
+    margin-right: 2%;
+}
+
+.gestpay-fancybox-cvv-textcard-card {
+    float: left;
+    width: 30%;
 }

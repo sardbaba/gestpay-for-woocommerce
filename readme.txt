@@ -2,8 +2,8 @@
 Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, iframe, direct payment gateway
 Requires at least: 4.0.1
-Tested up to: 4.9
-Stable tag: 20171125
+Tested up to: 4.9.1
+Stable tag: 20171217
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,6 +47,7 @@ Here is a list of filters and actions used in this plugin:
 * gestpay_encrypt_parameters
 * gestpay_settings_tab
 * gestpay_my_cards_template
+* gestpay_cvv_fancybox
 
 == Installation ==
 
@@ -55,6 +56,10 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20171217 =
+* Feature - Added help text near the CVV field (for it/en languages) for "on site" and iframe versions.
+* Feature - Added Consel Customer Info parameter.
 
 = 20171125 =
 * Fix - Updated test URLs from testecomm.sella.it to sandbox.gestpay.net

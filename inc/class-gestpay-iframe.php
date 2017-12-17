@@ -4,7 +4,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -26,7 +26,20 @@ class Gestpay_Iframe {
 
         include_once 'class-gestpay-subscriptions.php';
         $this->Subscr = new Gestpay_Subscriptions( $gestpay );
-        
+
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+
+    }
+
+    /**
+     * Enqueue additional Javascript
+     */
+    public function enqueue_scripts() {
+
+        $fancybox_path = $this->Helper->plugin_url . 'lib/jquery.fancybox';
+        wp_enqueue_style( 'gestpay-for-woocommerce-fancybox-css', $fancybox_path . '.min.css' );
+        wp_enqueue_script( 'gestpay-for-woocommerce-fancybox-js', $fancybox_path . '.min.js', array( 'jquery' ), WC_VERSION, true );
+
     }
 
     /**
@@ -45,7 +58,7 @@ class Gestpay_Iframe {
         if ( empty( $_COOKIE[GESTPAY_IFRAME_COOKIE_B_PAR] ) ) {
             // First call
             $input_params = $this->Gestpay->get_ab_params( $order );
-            
+
             if ( empty( $input_params['b'] ) ) {
                 return FALSE;
             }
@@ -146,7 +159,7 @@ class Gestpay_Iframe {
                     document.cookie = '<?php echo GESTPAY_IFRAME_COOKIE_T_KEY; ?>=' + TransKey.toString() + '; expires=' + expDate + ' ; path=/';
 
                     // Retrieve all parameters.
-                    var a = '<?php echo $this->Gestpay->shopLogin; ?>'; 
+                    var a = '<?php echo $this->Gestpay->shopLogin; ?>';
                     var b = Result.VBVRisp;
 
                     // The landing page where the user will be redirected after the issuer authentication
@@ -160,14 +173,14 @@ class Gestpay_Iframe {
                 else {
                     // Hide overlapping layer
                     document.getElementById( 'gestpay-inner-freeze-pane' ).className = 'gestpay-off';
-                    document.getElementById( 'gestpay-freeze-pane' ).className = 'gestpay-off';  
+                    document.getElementById( 'gestpay-freeze-pane' ).className = 'gestpay-off';
                     document.getElementById( 'gestpay-submit' ).disabled = false;
 
                     // Check the ErrorCode and ErrorDescription
                     if ( Result.ErrorCode == 1119 || Result.ErrorCode == 1120 ) {
                         document.getElementById( 'gestpay-cc-number' ).focus();
                     }
-                    else if ( Result.ErrorCode == 1124 || Result.ErrorCode == 1126 ) {         
+                    else if ( Result.ErrorCode == 1124 || Result.ErrorCode == 1126 ) {
                         document.getElementById( 'gestpay-cc-exp-month' ).focus();
                     }
                     else if ( Result.ErrorCode == 1125 ) {
@@ -231,7 +244,7 @@ class Gestpay_Iframe {
 
             // Create the iFrame
             GestPay.CreatePaymentPage( a, b, GestpayIframe.PaymentPageLoad );
-            
+
             // Raise the Overlap layer and text
             document.getElementById( 'gestpay-freeze-pane' ).className = 'gestpay-freeze-pane-on';
             document.getElementById( 'gestpay-inner-freeze-pane-text' ).innerHTML = '<?php echo $this->Gestpay->strings['iframe_loading']; ?>';
@@ -252,7 +265,7 @@ class Gestpay_Iframe {
      * Clean up iframe cookies.
      */
     function delete_cookies() {
-        
+
         setcookie( GESTPAY_IFRAME_COOKIE_B_PAR, "", 1, COOKIEPATH, COOKIE_DOMAIN );
         setcookie( GESTPAY_IFRAME_COOKIE_T_KEY, "", 1 );
 

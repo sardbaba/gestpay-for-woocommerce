@@ -4,7 +4,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -31,8 +31,8 @@ if ( isset( $_GET['a'] ) && isset( $_GET['b'] ) ) {
   $params->CryptedString = $_GET['b'];
 
   $crypt_url = $is_test
-    ? "https://testecomm.sella.it/gestpay/gestpayws/WSCryptDecrypt.asmx?WSDL"
-    : "https://ecomms2s.sella.it/gestpay/gestpayws/WSCryptDecrypt.asmx?WSDL";
+    ? "https://sandbox.gestpay.net/gestpay/GestPayWS/WsCryptDecrypt.asmx?WSDL"
+    : "https://ecomms2s.sella.it/gestpay/GestPayWS/WSCryptDecrypt.asmx?WSDL";
 
   try {
     $client = new SoapClient( $crypt_url );
@@ -62,6 +62,16 @@ if ( isset( $_GET['a'] ) && isset( $_GET['b'] ) ) {
   }
 
   // Process the Payment into the right website.
-  header( "Location: " . $url . "?wc-api=WC_Gateway_Gestpay&a=" . $params->shopLogin . "&b=" . $params->CryptedString );
+  $full_url = $url . "?wc-api=WC_Gateway_Gestpay&a=" . $params->shopLogin . "&b=" . $params->CryptedString;
+
+  if ( isset( $_GET['s2s'] ) ) {
+    // s2s call, process in background
+    $full_url = $full_url . "&s2s=1";
+    $contents = file_get_contents( $full_url );
+  }
+  else {
+    // Redirect the customer the right website.
+    header( "Location: " . $full_url );
+  }
 }
 ?>

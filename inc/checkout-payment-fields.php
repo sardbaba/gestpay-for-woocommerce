@@ -4,7 +4,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -178,21 +178,52 @@ if ( $this->Gestpay->is_sandbox ) : ?>
 
     if ( $this->Gestpay->is_cvv_required ) :
 
-        // --- cvv
-        woocommerce_form_field(
-            'gestpay-cc-cvv',
-            array(
-                'type' => 'text',
-                'label' => $this->Gestpay->strings['s2s_card_cvv'],
-                'maxlength' => 4,
-                'required' => true,
-                'custom_attributes' => array(
-                    'autocomplete' => 'nope',
-                    'data-encrypted-name' => 'cvv',
-                    'style' => 'width:60px;'
-                ),
-            )
-        );
+        $img_url = $this->Gestpay->Helper->plugin_url;
+
+        $fancy_info = '<a id="gestpay-fancybox-cvv-link" data-fancybox data-src="#gestpay-fancybox-cvv-modal" href="javascript:;">' .
+            $this->Gestpay->strings['gestpay_cvv_help'] . '</a>';
+        ?>
+
+        <p class="form-row validate-required" id="gestpay-cc-cvv_field">
+
+            <label for="gestpay-cc-cvv" class="">
+                <?php echo $this->Gestpay->strings['s2s_card_cvv']; ?> <abbr class="required" title="required">*</abbr>
+            </label>
+
+            <input type="text" class="input-text" name="gestpay-cc-cvv" id="gestpay-cc-cvv" placeholder="" value="" autocomplete="nope" data-encrypted-name="cvv" style="width:60px;" maxlength="4">
+
+            <span class="description">
+                <?php echo apply_filters( 'gestpay_cvv_fancybox', $fancy_info ); ?>
+            </span>
+
+        </p>
+
+        <div style="display: none; width: 50%" id="gestpay-fancybox-cvv-modal">
+            <div class="gestpay-fancybox-section">
+                <h1><?php echo $this->Gestpay->strings['gestpay_cvv_help_h1_title']; ?></h1>
+                <p><?php echo $this->Gestpay->strings['gestpay_cvv_help_h1_text']; ?></p>
+            </div>
+            <div class="gestpay-fancybox-section">
+                <h3><?php echo $this->Gestpay->strings['gestpay_cvv_help_visa_title']; ?></h3>
+                <p>
+                    <p class="gestpay-fancybox-cvv-textcard-text">
+                        <?php echo $this->Gestpay->strings['gestpay_cvv_help_visa_text']; ?>
+                    </p>
+                    <p class="gestpay-fancybox-cvv-textcard-card"><img src="<?php echo $img_url; ?>/images/CVV2.gif"></p>
+                </p>
+            </div>
+            <div class="gestpay-fancybox-section">
+                <h3><?php echo $this->Gestpay->strings['gestpay_cvv_help_amex_title']; ?></h3>
+                <p>
+                    <p class="gestpay-fancybox-cvv-textcard-text">
+                    <?php echo $this->Gestpay->strings['gestpay_cvv_help_amex_text']; ?>
+                    </p>
+                    <p class="gestpay-fancybox-cvv-textcard-card"><img src="<?php echo $img_url; ?>/images/4DBC.gif"></p>
+                </p>
+            </div>
+        </div>
+
+        <?php
 
     endif;
 
@@ -208,7 +239,7 @@ if ( $this->Gestpay->is_sandbox ) : ?>
 
     </form><!-- end #gestpay-cc-form -->
 
-    <a href="javascript:window.location.reload(true)" id="iframe-reload-btn" class="btn" style="display: none;">Riprova</a>
+    <a href="javascript:window.location.reload(true)" id="iframe-reload-btn" class="btn" style="display: none;"><?php echo __( 'Retry', 'gestpay-for-woocommerce' ); ?></a>
 
 <?php endif; // end if $this->Gestpay->is_iframe ?>
 

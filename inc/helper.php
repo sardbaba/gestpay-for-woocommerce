@@ -4,7 +4,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -384,7 +384,7 @@ class WC_Gateway_GestPay_Helper {
         switch ( $path ) {
             case 'view_order':
                 return $order->get_view_order_url();
-          
+
             case 'order_received':
                 return $this->gw->get_return_url( $order );
 
@@ -465,14 +465,14 @@ JS;
         $cancel_url        = esc_url_raw( $order->get_cancel_order_url() );
         $pay_order_str     = 'Pay via '.$this->gw->method_title;
         $cancel_order_str  = 'Cancel order &amp; restore cart';
-    
+
         $this->wc_enqueue_autosubmit();
-    
+
         $input_fields = "";
         foreach ( $input_params as $key => $value ) {
             $input_fields.= '<input type="hidden" name="' . esc_attr( $key ) . '" value="' . esc_attr( $value ) . '" />';
         }
-    
+
         return <<<HTML
             <form action="{$action_url}" method="{$method}" id="form__{$this->plugin_slug_dashed}" target="_top">
                 $input_fields

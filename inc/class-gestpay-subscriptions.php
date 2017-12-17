@@ -4,7 +4,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -151,7 +151,7 @@ class Gestpay_Subscriptions {
             );
         }
         elseif ( $xml_response->TransactionType == "PAGAM" && $xml_response->TransactionResult == "KO" ) {
-         
+
             // --- Transactions made with 3D-Secure cards
 
             if ( $xml_response->ErrorCode == '8006' ) {
@@ -222,7 +222,7 @@ class Gestpay_Subscriptions {
      *
      * Gestpay Pro with Tokenization have no support for recurring payments, but it allows to charge
      * a stored credit card (using a masked token) if and only if 3D-Secure is NOT enabled.
-     * 
+     *
      * For each subscription, a `woocommerce_scheduled_subscription_payment_{payment_gateway_id}`
      * hook is fired whenever a payment is due, so we can hook on it to charge the next payment.
      *
@@ -280,7 +280,7 @@ class Gestpay_Subscriptions {
                     $refund_res = $this->Gestpay->Order_Actions->refund( $parent_order_id, $gestpay_fix_amount_zero, 'Write-Off' );
                 }
             }
-            
+
             // Remove order meta so it will not be processed anymore.
             delete_post_meta( $parent_order_id, GESTPAY_ORDER_META_AMOUNT );
 

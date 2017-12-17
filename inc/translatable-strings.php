@@ -4,7 +4,7 @@
  * Gestpay for WooCommerce
  *
  * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -172,5 +172,26 @@ return array(
 
     "fix_0_writeoff" =>
         __( "Write-off €0.01", $t ),
+
+    "gestpay_cvv_help" =>
+        __( "Where do I find the security code?", $t ),
+
+    "gestpay_cvv_help_h1_title" =>
+        __( "Security code", $t ),
+
+    "gestpay_cvv_help_h1_text" =>
+        __( "The security code (CVV2 or 4DDBC) is a number consisting of three or four digits kept separated from the main number of your credit card. The position of the security code may vary depending on the company that issued your credit card.", $t ),
+
+    "gestpay_cvv_help_visa_title" =>
+        __( "Visa / Mastercard / Maestro", $t ),
+
+    "gestpay_cvv_help_visa_text" =>
+        __( "For Visa and Mastercard the three-digit security number (CVV2) is printed on the back of the card right after the card number.", $t ),
+
+    "gestpay_cvv_help_amex_title" =>
+        __( "American Express", $t ),
+
+    "gestpay_cvv_help_amex_text" =>
+        __( "For American Express cards the four-digit security code (4DBC) is printed on the front of the card, either to the left or right of the American Express card number.", $t ),
 
 );
