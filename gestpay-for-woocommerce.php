@@ -4,7 +4,7 @@
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
  * Description: Integra il sistema di pagamento GestPay by Easy Nolo (Gruppo Banca Sella) in WooCommerce.
- * Version: 20171217
+ * Version: 20180412
  * Author: Easy Nolo (Gruppo Banca Sella)
  * Author URI: http://www.easynolo.it
  *
@@ -46,11 +46,10 @@ define( 'GESTPAY_ORDER_META_AMOUNT', '_wc_gestpay_fix_amount_zero' );
 // Meta used to store the token.
 define( 'GESTPAY_META_TOKEN', '_wc_gestpay_cc_token' );
 
-// Meta used to store the transaction key.
+// Meta used to store the transaction key, bank transaction id and auth code.
 define( 'GESTPAY_ORDER_META_TRANS_KEY', '_wc_gestpay_s2s_transaction_key' );
-
-// Meta used to store the bank transaction ID.
 define( 'GESTPAY_ORDER_META_BANK_TID', '_wc_gestpay_banktid' );
+define( 'GESTPAY_ORDER_META_AUTH_CODE', '_wc_gestpay_authcode' );
 
 // Used to store the iFrame cookies
 define( 'GESTPAY_IFRAME_COOKIE_B_PAR', 'GestPayEncString' );
@@ -64,6 +63,15 @@ require_once 'inc/class-gestpay-cards.php';
 
 add_action( 'plugins_loaded', 'init_wc_gateway_gestpay' );
 function init_wc_gateway_gestpay() {
+
+    if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
+
+        ?><div id="message" class="error">
+            <p>Attenzione: è necessario installare e attivare <strong>WooCommerce</strong> per poter utilizzare <strong>Gestpay for WooCommerce</strong></p>
+        </div><?php
+
+        return;
+    }
 
     /**
      * Add the gateway(s) to WooCommerce.
@@ -99,8 +107,8 @@ function init_wc_gateway_gestpay() {
                 return array( 'error' => $this->Helper->get_suhosin_error_msg( 'GestPay for WooCommerce' ) );
             }
 
-            if ( ! $this->Helper->is_wc_gte_23() ) {
-                return array( 'error' => 'GestPay for WooCommerce richiede WooCommerce versione >= 2.3.x' );
+            if ( ! $this->Helper->is_wc_gte_26() ) {
+                return array( 'error' => 'GestPay for WooCommerce richiede WooCommerce versione >= 2.6.x' );
             }
 
             return TRUE;
@@ -162,6 +170,7 @@ function init_wc_gateway_gestpay() {
             $this->is_cvv_required = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_send_cvv' );
             $this->save_token      = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_save_token' );
             $this->is_3ds_enabled  = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_use_3ds' );
+            $this->token_with_auth = $this->is_sandbox && "yes" !== get_option( 'wc_gestpay_test_token_auth' ) ? 'N' : 'Y';
 
             // Acquire Pro parameters
             if ( $this->account != GESTPAY_STARTER ) {
@@ -246,27 +255,79 @@ function init_wc_gateway_gestpay() {
         function add_actions() {
 
             if ( $this->force_check ) {
-                // This can be used to force the check of the response.
-                // Some website's may need that.
+                // This can be used to force the check of the response. Some website's may need that.
                 $this->check_gateway_response();
             }
 
-            add_action( 'woocommerce_receipt_' . $this->id,
-                array( $this, 'receipt_page' ) );
+            add_action( 'woocommerce_receipt_' . $this->id, array( $this, 'receipt_page' ) );
 
-            add_action( 'woocommerce_thankyou_' . $this->id,
-                array( $this, 'thankyou_page' ) );
+            add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'thankyou_page' ) );
 
-            add_action( 'woocommerce_api_' . strtolower( get_class( $this ) ),
-                array( $this, 'check_gateway_response' ) );
+            add_action( 'woocommerce_api_' . strtolower( get_class( $this ) ), array( $this, 'check_gateway_response' ) );
 
-            add_action( 'woocommerce_update_options_payment_gateways_' . $this->id,
-                array( $this, 'process_admin_options' ) );
+            add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
+
+            if ( function_exists( 'is_checkout' ) && is_checkout() ) {
+                // Include TLS js by Gestpay
+                wp_enqueue_script( 'gestpay-TLSCHK_TE', 'https://sandbox.gestpay.net/pagam/javascript/TLSCHK_TE.js', array(), '201804', true );
+                wp_enqueue_script( 'gestpay-TLSCHK_PRO', 'https://ecomm.sella.it/pagam/javascript/TLSCHK_PRO.js', array(), '201804', true );
+                wp_enqueue_script( 'gestpay-checkBrowser', 'https://www.gestpay.it/checkbrowser/checkBrowser.js', array(), '201804', true );
+            }
+
+            add_action( 'woocommerce_review_order_before_payment', array( $this, 'check_tls12' ) );
 
             // Do not allow subscriptions payments with other payment types.
-            add_filter( 'woocommerce_available_payment_gateways',
-                array( $this, 'available_payment_gateways' ), 99, 1 );
+            add_filter( 'woocommerce_available_payment_gateways', array( $this, 'available_payment_gateways' ), 99, 1 );
 
+        }
+
+        /**
+         * Checks if the browser of the user is enabled to use TLS 1.2 and if not,
+         * disables the place order button and shows the error message.
+         * Be sure that the checked payment method is Gestpay, else we don't care
+         * to check TLS for others (which may not be interessed to check for it).
+         *
+         * We need to directly print the JS becuase it depends on the method name.
+         * Passing parameters to an external JS file does not seems to work.
+         */
+        function check_tls12() {
+            if ( $this->is_s2s && $this->id === 'wc_gateway_gestpay' ) {
+                // Don't do that with the S2S payment box
+                return;
+            }
+
+            ?>
+<script type="text/javascript">
+jQuery( document.body ).on( 'updated_checkout payment_method_selected', function() {
+    if ( typeof GestPay !== 'undefined' && typeof GestPay.ChkTLS !== 'undefined' ! GestPay.ChkTLS.enabled ) {
+        var links = '<span id="UpdateLinks">' +
+            '<span><a target="_blank" href="https://windows.microsoft.com/it-it/internet-explorer/download-ie">' +
+                '<img src="https://www.gestpay.it/gestpay/static/checkbrowser/IE10_white.png" alt="Internet Explorer">' +
+            '</a></span>' +
+            '<span><a target="_blank" href="https://www.mozilla.org/it/firefox/new/">' +
+                '<img src="https://www.gestpay.it/gestpay/static/checkbrowser/firefox-icon_white.png" alt="Firefox">' +
+            '</a></span>' +
+            '<span><a target="_blank" href="https://www.google.com/chrome/">' +
+                '<img src="https://www.gestpay.it/gestpay/static/checkbrowser/Chrome-icon_white.png" alt="Chrome">' +
+            '</a></span>' +
+        '</span>';
+        var method = 'payment_method_' + <?php echo json_encode( $this->id ); ?>;
+        var button = jQuery( '#place_order[name="woocommerce_checkout_place_order"]' );
+        var el = document.getElementsByClassName( 'payment_box ' + method );
+        var buttonChecked = jQuery( 'input#' + method + ':checked' ).val();
+
+        if ( el.length > 0 && typeof el[0] !== 'undefined' && buttonChecked ) {
+            el[0].innerHTML = '<div class="gestpay-tls-error">' + <?php echo json_encode( $this->strings['tls_text_error'] ); ?> + links + '</div>';
+
+            button.attr( 'disabled', true ).addClass( 'gestpay-disabled' ).unbind( 'mouseenter mouseleave' )
+        }
+        else {
+            button.removeAttr( 'disabled' ).removeClass( 'gestpay-disabled' );
+        }
+    }
+});
+</script>
+            <?php
         }
 
         /**
@@ -384,7 +445,7 @@ function init_wc_gateway_gestpay() {
                 }
             }
 
-            if ( ! empty( $ret ) ) {
+            if ( ! is_wp_error( $ret ) && ! empty( $ret ) ) {
                 return $ret;
             }
 
@@ -430,7 +491,7 @@ function init_wc_gateway_gestpay() {
                 // ----------------------------------------- REDIRECT
                 $input_params = $this->get_ab_params( $order );
 
-                $ret = $this->Helper->get_gw_form( $this->payment_url, "post", $input_params, $order );
+                $ret = $this->Helper->get_gw_form( $this->payment_url, $input_params, $order );
 
                 if ( $ret == FALSE ) {
                     $this->Helper->log_add( "[ERROR] Check the GestPay configuration." );
@@ -535,15 +596,37 @@ function init_wc_gateway_gestpay() {
 
             // Read the response and find the order_id.
             $xml = simplexml_load_string( $objectresult->DecryptResult->any );
-            $order_id = intval( $xml->ShopTransactionID );
+            $raw_order_id = (string)$xml->ShopTransactionID;
 
             // Check if the order ID is correct.
-            if ( ! is_numeric( $order_id ) || empty( $order_id ) ) {
+            if ( empty( $raw_order_id ) ) {
+                $err = "[ERROR] check_gateway_response - Order id is empty." . var_export( $xml, true );
+                echo $err;
+                $this->Helper->log_add( $err );
                 die();
             }
 
-            // Retrieve the order object and status.
+            // Retrieve the order id (if different) and the order object
+            $order_id = $this->Helper->get_order_id_by_id( $raw_order_id );
             $order = wc_get_order( $order_id );
+
+            if ( empty( $order ) ) {
+                $err = "[ERROR] check_gateway_response - Order is empty." . var_export( $xml, true );
+                echo $err;
+                $this->Helper->log_add( $err );
+                die();
+            }
+
+            if ( $order_id != $raw_order_id ) {
+                // Makes a backup of the raw order id. This can be useful if the merchant
+                // uses a plugin like WC Sequential Order Number Pro to change the order id
+                // and after some time he disable it: this action will restore the original
+                // Woocommerce ordering, loosing all the references between an order and the id
+                // of a transaction in the Gestpay backoffice. At least we'll have the ability
+                // to inspect the order meta to identify the original order id.
+                update_post_meta( $order_id, '_gestpay_raw_order_id', $raw_order_id );
+            }
+
             $order_status = $this->Helper->order_get( $order, 'status' );
 
             do_action( 'gestpay_before_processing_order', $order );
@@ -571,21 +654,11 @@ function init_wc_gateway_gestpay() {
                     $this->IFrame->maybe_save_token( $xml, $order );
                 }
 
+                $txn = $this->Helper->handle_transaction_details( $order, $order_id, $xml );
+
                 $msg = sprintf( $this->strings['transaction_ok'], $order_id );
 
-                // Store the Bank Transaction ID. This is required for order actions.
-                $txn_id = '';
-
-                if ( ! empty( $xml->BankTransactionID ) ) {
-                    $txn_id = (string)$xml->BankTransactionID;
-                    update_post_meta( $order_id, GESTPAY_ORDER_META_BANK_TID, $txn_id );
-                }
-
-                if ( ! empty( $xml->AuthorizationCode ) ) {
-                    $txn_id.= ' / ' . $xml->AuthorizationCode;
-                }
-
-                $this->Helper->wc_order_completed( $order, $msg, $txn_id );
+                $this->Helper->wc_order_completed( $order, $msg, $txn );
 
                 do_action( 'gestpay_after_order_completed', $order, $xml );
             }
@@ -670,7 +743,7 @@ function init_wc_gateway_gestpay() {
             $params->shopLogin         = $this->shopLogin;
             $params->uicCode           = $this->Helper->get_order_currency( $order );
             $params->amount            = number_format( (float)$amount, 2, '.', '' );
-            $params->shopTransactionId = $order_id;
+            $params->shopTransactionId = $this->Helper->get_transaction_id( $order_id );
 
             // Maybe add the PRO parameters.
             if ( $this->account != GESTPAY_STARTER ) {
@@ -791,6 +864,7 @@ function wc_gateway_gestpay_ajax_settle_s2s() {
     $Gestpay = new WC_Gateway_Gestpay();
     $Gestpay->Order_Actions->ajax_settle();
 }
+
 
 /**
  * Add this ajax action to listen for the delete call

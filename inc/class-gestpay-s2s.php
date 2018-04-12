@@ -55,7 +55,10 @@ class Gestpay_S2S {
             $token = $this->get_token( $order );
 
             if ( ! $token ) {
-                return FALSE;
+                wc_add_notice( $this->Gestpay->strings['s2s_token_error'], 'error' );
+
+                $this->Helper->log_add( '>> ERROR >> Request Token Failed!' );
+                return new WP_Error( 'gestpay-error', 'Empty Token' );
             }
 
             $s2s_payment_params = array(
@@ -185,7 +188,7 @@ class Gestpay_S2S {
 
             $this->Helper->log_add( '======= S2S Payment Phase 2 ======= Redirect to 3D Secure auth page.' );
 
-            echo $this->Helper->get_gw_form( $this->Gestpay->pagam3d_url, "post", $input_params, $order );
+            echo $this->Helper->get_gw_form( $this->Gestpay->pagam3d_url, $input_params, $order );
         }
 
     }
@@ -287,11 +290,25 @@ class Gestpay_S2S {
         $params->cardNumber    = $this->Helper->get_post( 'gestpay-cc-number' );
         $params->expiryMonth   = $this->Helper->get_post( 'gestpay-cc-exp-month' );
         $params->expiryYear    = $this->Helper->get_post( 'gestpay-cc-exp-year' );  // 2 digits
-        $params->withAuth      = 'Y';
+        $params->withAuth      = $this->Gestpay->token_with_auth;
+
+        if ( empty( $params->cardNumber ) && empty( $params->expiryMonth ) && empty( $params->expiryYear ) ) {
+            return array(
+                'error_code' => '-1',
+                'error_desc' => 'Per favore controlla che tutti i dati della carta siano valorizzati'
+            );
+        }
 
         // Maybe send also the CVV field.
         if ( $this->Gestpay->is_cvv_required ) {
             $params->cvv = $this->Helper->get_post( 'gestpay-cc-cvv' );
+
+            if ( empty( $params->cvv ) ) {
+                return array(
+                    'error_code' => '-1',
+                    'error_desc' => 'Per favore controlla che tutti i dati della carta siano valorizzati'
+                );
+            }
         }
 
         $log_params = clone $params;

@@ -36,16 +36,13 @@ class Gestpay_Subscriptions {
              */
 
             // process scheduled subscription payments
-            add_action( 'woocommerce_scheduled_subscription_payment_wc_gateway_gestpay',
-                array( $this, 'process_subscription_renewal_payment' ), 10, 2 );
+            add_action( 'woocommerce_scheduled_subscription_payment_wc_gateway_gestpay', array( $this, 'process_subscription_renewal_payment' ), 10, 2 );
 
             // display the current payment method used for a subscription in the "My Subscriptions" table
-            add_filter( 'woocommerce_my_subscriptions_payment_method',
-                array( $this, 'maybe_render_subscription_payment_method' ), 10, 2 );
+            add_filter( 'woocommerce_my_subscriptions_payment_method', array( $this, 'maybe_render_subscription_payment_method' ), 10, 2 );
         }
 
-        add_filter( 'woocommerce_api_order_response',
-            array( $this, 'add_token_data' ), 10, 2 );
+        add_filter( 'woocommerce_api_order_response', array( $this, 'add_token_data' ), 10, 2 );
 
     }
 
@@ -91,7 +88,7 @@ class Gestpay_Subscriptions {
 
         // Maybe overwrite shopTransactionId (for subscription)
         if ( ! empty( $args['shopTransactionId'] ) ) {
-            $params->shopTransactionId = $args['shopTransactionId'];
+            $params->shopTransactionId = $this->Helper->get_transaction_id( $args['shopTransactionId'] );
         }
 
         $log_params = clone $params;
@@ -118,32 +115,18 @@ class Gestpay_Subscriptions {
 
         $xml_response = simplexml_load_string( $response->callPagamS2SResult->any );
 
-        // Store Transaction Key for being used on Phase III.
-        if ( ! empty( $xml_response->TransactionKey ) ) {
-            $transaction_id = (string)$xml_response->TransactionKey;
-            update_post_meta( $order_id, GESTPAY_ORDER_META_TRANS_KEY, $transaction_id );
-        }
-
-        // Store Bank TID for being used on Refund.
-        if ( ! empty( $xml_response->BankTransactionID ) ) {
-            $bank_tid = (string)$xml_response->BankTransactionID;
-            update_post_meta( $order_id, GESTPAY_ORDER_META_BANK_TID, $bank_tid );
-        }
-
         if ( $xml_response->TransactionType == "PAGAM" && $xml_response->TransactionResult == "OK" ) {
 
             // --- Transactions made with non 3D-Secure cards
+            $txn = $this->Helper->handle_transaction_details( $order, $order_id, $xml_response );
 
             if ( ! $this->is_scheduled_payment ) {
 
-                $msg = sprintf( $this->Gestpay->strings['transaction_ok'], $transaction_id );
-                $this->Helper->wc_order_completed( $order, $msg, $transaction_id );
+                $msg = sprintf( $this->Gestpay->strings['transaction_ok'], $order_id );
+
+                $this->Helper->wc_order_completed( $order, $msg, $txn );
 
                 add_action( 'the_content', array( &$this, 'show_message' ) );
-            }
-            elseif ( ! empty( $bank_tid ) && ! empty( $transaction_id ) ) {
-                // Store these infos to the scheduled order.
-                $order->add_order_note( "Bank TID: $bank_tid / Trans. key: $transaction_id" );
             }
 
             return array(
@@ -157,6 +140,14 @@ class Gestpay_Subscriptions {
             if ( $xml_response->ErrorCode == '8006' ) {
 
                 // -- Phase I: authorization request OK
+
+                if ( ! empty( $xml_response->TransactionKey ) ) {
+                    // Store the Transaction Key, which will be used in the Phase 3
+                    update_post_meta( $order_id, GESTPAY_ORDER_META_TRANS_KEY, (string)$xml_response->TransactionKey );
+                }
+                else {
+                    $this->Helper->log_add( '[ATTENZIONE]: Impossibile ricevere la TransactionKey in fase di autorizzazione. Verificare che il parametro sia abilitato nella risposta' );
+                }
 
                 return array(
                     'VbVRisp' => (string)$xml_response->VbV->VbVRisp,
@@ -307,7 +298,7 @@ class Gestpay_Subscriptions {
             array(
                 'token'             => $token,
                 'amount'            => number_format( (float)$amount_to_charge, 2, '.', '' ),
-                'shopTransactionId' => $renewal_order_id
+                'shopTransactionId' => $this->Helper->get_transaction_id( $renewal_order_id )
             )
         );
 

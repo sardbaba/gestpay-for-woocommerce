@@ -130,8 +130,28 @@ div.gestpay-form .form-wrap label {
     background-color:#FFEC8B;
     text-align:center;
     font-weight:blod;
-    color:red;
+    color:#b22222;
     padding: 20px;
+}
+
+.payment_box .gestpay-tls-error {
+    background-color: #b22222;
+    margin-left: 0;
+    padding: 10px;
+    width: 100%;
+    color: #FFF;
+    font-size: 120%;
+    line-height: 1.5;
+}
+
+.payment_box .gestpay-tls-error a,
+.payment_box .gestpay-tls-error img {
+    -webkit-box-shadow: none;
+    box-shadow: none;
+}
+
+#place_order[name="woocommerce_checkout_place_order"].gestpay-disabled {
+    opacity: .4;
 }
 
 #s2s-loadingbox {

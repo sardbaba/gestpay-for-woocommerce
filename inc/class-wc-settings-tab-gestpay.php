@@ -376,6 +376,14 @@ class WC_Settings_Tab_Gestpay {
                 'id' => 'wc_gestpay_test_url',
             ),
             array(
+                'title' => "Token con Autorizzazione:",
+                'type' => 'checkbox',
+                'label' => "Imposta il parametro withAuth=Y in modalità di test.",
+                'desc' => "Se selezionato il parametro withAuth sarà valorizzato con 'Y' (autorizzazione richiesta) altrimenti con 'N'; in produzione è sempre 'Y'.",
+                'default' => 'yes',
+                'id' => 'wc_gestpay_test_token_auth',
+            ),
+            array(
                 'title' => 'Debug Log:',
                 'type' => 'checkbox',
                 'label' => "Abilita la registrazione degli eventi",

@@ -41,6 +41,9 @@ return array(
     "gateway_consel_code" =>
         __( "Cosel Merchant Code Convention", $t ),
 
+    "gateway_consel_merchant_pro" =>
+        __( "Insert the code given by Consel, for example WIN, MPF, WIP or JMP.", $t ),
+
     "gateway_overwrite_cards" =>
         __( "Overwrite card icons", $t ),
 
@@ -103,6 +106,9 @@ return array(
 
     "s2s_token_delete" =>
         __( "Delete", $t ),
+
+    "s2s_token_error" =>
+        __( "Validation error: please double check required fields and try again. If this error persists, please contact the site administrator.", $t ),
 
     "s2s_no_cards" =>
         __( "There is not yet any credit card saved.", $t ),
@@ -194,4 +200,6 @@ return array(
     "gestpay_cvv_help_amex_text" =>
         __( "For American Express cards the four-digit security code (4DBC) is printed on the front of the card, either to the left or right of the American Express card number.", $t ),
 
+    "tls_text_error" =>
+        __( "Warning! We are sorry, but the browser you are using is no longer supported. You cannot complete payment with this browser because it is not secure, but you can update it or use a modern browser:", $t ),
 );

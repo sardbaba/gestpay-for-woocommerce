@@ -2,8 +2,8 @@
 Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, iframe, direct payment gateway
 Requires at least: 4.0.1
-Tested up to: 4.9.1
-Stable tag: 20171217
+Tested up to: 4.9.5
+Stable tag: 20180412
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,17 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20180412 =
+* Feature - Added compatibility with WC Sequential Order Numbers Pro.
+* Security - Added TLS 1.2 checks for redirect and iFrame versions: prevent old and unsecure browsers to proceed with the payment.
+* Fix - Show an error if required fields are not filled on the On-Site version (S2S).
+* Fix - Prevent Fatal Errors if WooCommerce is inactive.
+* Fix - Save transaction key on phase I
+* Checks - Verified compatibility with Wordpress 4.9.4/.5 and WooCommerce 3.3.4/.5.
+
+= 20180108 =
+* Fix - Consel Merchant Pro parameter is now changed to be an input box on which the merchant can add the custom code given by Consel.
 
 = 20171217 =
 * Feature - Added help text near the CVV field (for it/en languages) for "on site" and iframe versions.

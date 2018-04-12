@@ -37,6 +37,9 @@ msgstr "Consel ID Esercente"
 msgid "Cosel Merchant Code Convention"
 msgstr "Consel Codice Esercente di Convenzione"
 
+msgid "Insert the code given by Consel, for example WIN, MPF, WIP or JMP."
+msgstr "Inserisci il codice fornito da Consel, per esempio WIN, MPF, WIP oppure JMP."
+
 msgid "Overwrite card icons"
 msgstr "Sovrascrivi icone carte"
 
@@ -186,3 +189,9 @@ msgstr ""
 
 msgid "For American Express cards the four-digit security code (4DBC) is printed on the front of the card, either to the left or right of the American Express card number."
 msgstr "Per la compagnia American Express il codice di sicurezza a quattro cifre è stampato sul lato anteriore della carta a destra o a sinistra del numero principale della carta."
+
+msgid "Warning! We are sorry, but the browser you are using is no longer supported. You cannot complete payment with this browser because it is not secure, but you can update it or use a modern browser:"
+msgstr "Attenzione! Ci dispiace ma il browser che stai utilizzando non è più supportato. Non puoi completare il pagamento con questo browser perché non è sicuro, ma puoi aggiornarlo o utilizzare un browser moderno:"
+
+msgid "Validation error: please double check required fields and try again. If this error persists, please contact the site administrator."
+msgstr "Errore di validazione: si prega di ricontrollare i campi obbligatori e di riprovare. Se l'errore continua, si prega di contattare l'amministratore del sito."

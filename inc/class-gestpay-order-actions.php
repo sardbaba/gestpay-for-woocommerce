@@ -64,7 +64,7 @@ class Gestpay_Order_Actions {
 
         $params->shopLogin         = $this->Gestpay->shopLogin;
         $params->bankTransactionId = trim( $banktid );
-        $params->shopTransactionId = $order_id;
+        $params->shopTransactionId = $this->Helper->get_transaction_id( $order_id );
         $params->amount            = number_format( (float)$amount, 2, '.', '' );
         $params->uicCode           = $this->Helper->get_order_currency( $order );
         $params->RefundReason      = substr( $reason, 0, 50 );
@@ -222,7 +222,7 @@ class Gestpay_Order_Actions {
 
             $params->shopLogin         = $this->Gestpay->shopLogin;
             $params->bankTransactionId = (int)trim( $banktid );
-            $params->shopTransactionId = $order_id;
+            $params->shopTransactionId = $this->Helper->get_transaction_id( $order_id );
             $params->CancelReason      = 'Transaction withdrawn manually.';
 
             $this->Helper->log_add( '[CallDeleteS2S REQUEST]: ', $params );

@@ -334,6 +334,36 @@ class WC_Gateway_GestPay_Helper {
     }
 
     /**
+     * If the merchant is using a plugin which alters the original ID of the order
+     * we need to extract it, so that can be used in normal functions, like update_post_meta
+     * or wc_get_order.
+     */
+    function get_order_id_by_id( $order_id ) {
+        if ( class_exists( 'WC_Seq_Order_Number_Pro' ) ) {
+            $wc_son = new WC_Seq_Order_Number_Pro();
+            $order_id = $wc_son->find_order_by_order_number( $order_id );
+        }
+
+        return $order_id;
+    }
+
+    /**
+     * If the merchant is using a plugin which alters the original ID of the order
+     * we need to retrieve it, so that can be used to save the correct trasaction ID.
+     */
+    function get_transaction_id( $order_id ) {
+        if ( class_exists( 'WC_Seq_Order_Number_Pro' ) ) {
+            $wcsonp_id = get_post_meta( $order_id, '_order_number_formatted', true );
+
+            if ( ! empty( $wcsonp_id ) ) {
+                return $wcsonp_id;
+            }
+        }
+
+        return $order_id;
+    }
+
+    /**
      * Backward compatibility function to get a property of the order.
      * On WC 2.x there was a direct access, while on 3.x it uses the getter.
      */
@@ -367,12 +397,6 @@ class WC_Gateway_GestPay_Helper {
     }
 
     /* short checks */
-    function is_wc_gte_20() { return $this->is_wc_gte( '2.0.0' ); }
-    function is_wc_gte_21() { return $this->is_wc_gte( '2.1.0' ); }
-    function is_wc_gte_22() { return $this->is_wc_gte( '2.2.0' ); }
-    function is_wc_gte_23() { return $this->is_wc_gte( '2.3.0' ); }
-    function is_wc_gte_24() { return $this->is_wc_gte( '2.4.0' ); }
-    function is_wc_gte_25() { return $this->is_wc_gte( '2.5.0' ); }
     function is_wc_gte_26() { return $this->is_wc_gte( '2.6.0' ); }
     function is_wc_gte_27() { return $this->is_wc_gte( '2.7.0' ); }
     function is_wc_gte_30() { return $this->is_wc_gte( '3.0.0' ); }
@@ -402,6 +426,39 @@ class WC_Gateway_GestPay_Helper {
         WC()->cart->empty_cart();
     }
 
+    function handle_transaction_details( $order, $order_id, $xml ) {
+        $txn_details = array(
+            'bt_id' => '',
+            'auth_code' => '',
+            'tr_key' => ''
+        );
+
+        $order_note = '';
+
+        if ( ! empty( $xml->BankTransactionID ) ) {
+            // This is required for order actions.
+            $txn_details['bt_id'] = (string)$xml->BankTransactionID;
+            $order_note = "Bank TID: " . $txn_details['bt_id'];
+            update_post_meta( $order_id, GESTPAY_ORDER_META_BANK_TID, $txn_details['bt_id'] );
+        }
+
+        if ( ! empty( $xml->AuthorizationCode ) ) {
+            $txn_details['auth_code'] = (string)$xml->AuthorizationCode;
+            $order_note.= " / Auth code: " . $txn_details['auth_code'];
+            update_post_meta( $order_id, GESTPAY_ORDER_META_AUTH_CODE, $txn_details['auth_code'] );
+        }
+
+        if ( ! empty( $xml->TransactionKey ) ) {
+            $txn_details['tr_key'] = (string)$xml->TransactionKey;
+            $order_note.= " / Trans Key: " . $txn_details['tr_key'];
+            update_post_meta( $order_id, GESTPAY_ORDER_META_TRANS_KEY, $txn_details['tr_key'] );
+        }
+
+        $order->add_order_note( $order_note );
+
+        return implode( '/', array_filter( $txn_details ) );
+    }
+
     /**
      * Update order status, add admin order note and empty the cart
      */
@@ -427,46 +484,38 @@ class WC_Gateway_GestPay_Helper {
         // \FIX
     }
 
-    function wc_enqueue_autosubmit() {
-        $code = $this->get_autosubmit_js();
-        wc_enqueue_js( $code );
-    }
-
-    function get_autosubmit_js() {
-        $assets_path = str_replace( array( 'http:', 'https:' ), '', WC()->plugin_url() ) . '/assets/';
-        $imgloader = $assets_path . 'images/ajax-loader@2x.gif';
-        $js = <<<JS
-          jQuery('html').block({
-            message: '<img src="$imgloader" alt="Redirecting&hellip;" style="float:left;margin-right:10px;"/>Thank you! We are redirecting you to make payment.',
-            overlayCSS: {
-                background: '#fff',
-                opacity: 0.6
-            },
-            css: {
-                padding: 20,
-                textAlign: 'center',
-                color: '#555',
-                border: '3px solid #aaa',
-                backgroundColor: '#fff',
-                cursor: 'wait',
-                lineHeight: '32px'
-            }
-          });
-          jQuery('#submit__{$this->plugin_slug_dashed}').click();
-JS;
-        return $js;
-    }
-
     /**
      * Create the gateway form, loading the autosubmit javascript.
      */
-    function get_gw_form( $action_url, $method, $input_params, $order ) {
+    function get_gw_form( $action_url, $input_params, $order ) {
+        $assets_path = str_replace( array( 'http:', 'https:' ), '', WC()->plugin_url() ) . '/assets/';
+        $imgloader = $assets_path . 'images/ajax-loader@2x.gif';
+        $js = <<<JS
+            jQuery('html').block({
+                message: '<img src="$imgloader" alt="Redirecting&hellip;" style="float:left;margin-right:10px;"/>Thank you! We are redirecting you to make payment.',
+                overlayCSS: {
+                    background: '#fff',
+                    opacity: 0.6
+                },
+                css: {
+                    padding: 20,
+                    textAlign: 'center',
+                    color: '#555',
+                    border: '3px solid #aaa',
+                    backgroundColor: '#fff',
+                    cursor: 'wait',
+                    lineHeight: '32px'
+                }
+            });
+            jQuery('#submit__{$this->plugin_slug_dashed}').click();
+JS;
+
+        wc_enqueue_js( $js );
+
         $action_url        = esc_url_raw( $action_url );
         $cancel_url        = esc_url_raw( $order->get_cancel_order_url() );
         $pay_order_str     = 'Pay via '.$this->gw->method_title;
         $cancel_order_str  = 'Cancel order &amp; restore cart';
-
-        $this->wc_enqueue_autosubmit();
 
         $input_fields = "";
         foreach ( $input_params as $key => $value ) {
@@ -474,7 +523,7 @@ JS;
         }
 
         return <<<HTML
-            <form action="{$action_url}" method="{$method}" id="form__{$this->plugin_slug_dashed}" target="_top">
+            <form action="{$action_url}" method="POST" id="form__{$this->plugin_slug_dashed}" target="_top">
                 $input_fields
                 <input type="submit" class="button-alt" id="submit__{$this->plugin_slug_dashed}" value="{$pay_order_str}" />
                 <a class="button cancel" href="$cancel_url">{$cancel_order_str}</a>

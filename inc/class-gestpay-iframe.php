@@ -21,11 +21,8 @@ class Gestpay_Iframe {
 
         // Get a pointer to the main class and to the helper.
         $this->Gestpay = $gestpay;
-        $this->Helper  = $gestpay->Helper;
+        $this->Helper = $gestpay->Helper;
         $this->can_have_cards = FALSE;
-
-        include_once 'class-gestpay-subscriptions.php';
-        $this->Subscr = new Gestpay_Subscriptions( $gestpay );
 
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 
@@ -237,8 +234,9 @@ class Gestpay_Iframe {
             return false;
         }
 
-        // Check if the browser support HTML5 postmessage
         if ( BrowserEnabled ) {
+            // Check if the browser support HTML5 postmessage
+
             var a = '<?php echo $this->Gestpay->shopLogin; ?>';
             var b = '<?php echo $encString; ?>';
 
@@ -312,8 +310,11 @@ class Gestpay_Iframe {
             'year'  => (int)$xml_response->TokenExpiryYear
         );
 
+        include_once 'class-gestpay-subscriptions.php';
+        $Subscr = new Gestpay_Subscriptions( $this->Gestpay );
+
         // Maybe store the token to the users cards
-        $this->Subscr->Cards->save_card( $the_card );
+        $Subscr->Cards->save_card( $the_card );
         */
     }
 

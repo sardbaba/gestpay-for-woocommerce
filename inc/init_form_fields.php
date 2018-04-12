@@ -45,13 +45,8 @@ if ( ! empty( $_GET['section'] ) && 'wc_gateway_gestpay_consel' == $_GET['sectio
 
     $gateway['param_consel_merchant_pro'] = array(
         'title' => $this->gw->strings['gateway_consel_code'],
-        'default' => 'WIN',
-        'type' => 'select',
-        'options' => array(
-            'WIN' => "WIN",
-            'MPF' => "MPF",
-            'WIP' => "WIP"
-        ),
+        'type' => 'text',
+        'description' => $this->gw->strings['gateway_consel_merchant_pro'],
     );
 
 } // end is wc_gateway_gestpay_consel
