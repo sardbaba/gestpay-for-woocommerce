@@ -404,6 +404,14 @@ class WC_Settings_Tab_Gestpay {
                 'id' => 'wc_gestpay_experimental',
             ),
             array(
+                'title' => 'Forza Crypt HTTP',
+                'type' => 'checkbox',
+                'label' => ' ',
+                'desc' => '<strong>Attenzione!</strong> Se selezionato, verrà forzata la richiesta di crittografia e decrittografia verso le URL non sicure. <strong>Utilizza questa opzione solo in caso di problemi con l\'aggiornamento del sistema per supportare TLS 1.2</strong>. Per maggiori informazioni visitare <a href="https://www.gestpay.it/dismissione-tls/" target="_blank">https://www.gestpay.it/dismissione-tls</a>.',
+                'default' => 'no',
+                'id' => 'wc_gestpay_force_crypt_http',
+            ),
+            array(
                 'title' => 'Forza verifica risposta',
                 'type' => 'checkbox',
                 'label' => ' ',

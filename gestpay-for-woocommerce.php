@@ -4,7 +4,7 @@
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
  * Description: Integra il sistema di pagamento GestPay by Easy Nolo (Gruppo Banca Sella) in WooCommerce.
- * Version: 20180412
+ * Version: 20180426
  * Author: Easy Nolo (Gruppo Banca Sella)
  * Author URI: http://www.easynolo.it
  *
@@ -223,6 +223,16 @@ function init_wc_gateway_gestpay() {
                 $this->iframe_url  = "https://ecomm.sella.it/pagam/JavaScript/js_GestPay.js";
             }
 
+            // Use the old HTTP crypt if the merchant server is not TLS 1.2 compatible.
+            if ( "yes" == get_option( 'wc_gestpay_force_crypt_http' ) ) {
+                if ( $this->is_sandbox ) {
+                    $this->ws_url = "http://sandbox.gestpay.net/crypthttp/WSCryptDecrypt.asmx?wsdl";
+                }
+                else {
+                    $this->ws_url = "http://ecomms2s.sella.it/crypthttp/WSCryptDecrypt.asmx?wsdl";
+                }
+            }
+
             $this->ws_S2S_resp_url = get_bloginfo( 'url' ) . '/?wc-api=' . GESTPAY_WC_API;
 
             // Load the S2S actions for the order.
@@ -296,38 +306,27 @@ function init_wc_gateway_gestpay() {
                 return;
             }
 
-            ?>
-<script type="text/javascript">
+?><script type="text/javascript">
 jQuery( document.body ).on( 'updated_checkout payment_method_selected', function() {
-    if ( typeof GestPay !== 'undefined' && typeof GestPay.ChkTLS !== 'undefined' ! GestPay.ChkTLS.enabled ) {
-        var links = '<span id="UpdateLinks">' +
-            '<span><a target="_blank" href="https://windows.microsoft.com/it-it/internet-explorer/download-ie">' +
-                '<img src="https://www.gestpay.it/gestpay/static/checkbrowser/IE10_white.png" alt="Internet Explorer">' +
-            '</a></span>' +
-            '<span><a target="_blank" href="https://www.mozilla.org/it/firefox/new/">' +
-                '<img src="https://www.gestpay.it/gestpay/static/checkbrowser/firefox-icon_white.png" alt="Firefox">' +
-            '</a></span>' +
-            '<span><a target="_blank" href="https://www.google.com/chrome/">' +
-                '<img src="https://www.gestpay.it/gestpay/static/checkbrowser/Chrome-icon_white.png" alt="Chrome">' +
-            '</a></span>' +
-        '</span>';
-        var method = 'payment_method_' + <?php echo json_encode( $this->id ); ?>;
+    if ( typeof GestPay !== 'undefined' && typeof GestPay.ChkTLS !== 'undefined' && ! GestPay.ChkTLS.enabled ) {
+        var links = '<span id="UpdateLinks"><span><a target="_blank" href="https://windows.microsoft.com/it-it/internet-explorer/download-ie"><img src="https://www.gestpay.it/gestpay/static/checkbrowser/IE10_white.png" alt="Internet Explorer"></a></span><span><a target="_blank" href="https://www.mozilla.org/it/firefox/new/"><img src="https://www.gestpay.it/gestpay/static/checkbrowser/firefox-icon_white.png" alt="Firefox"></a></span><span><a target="_blank" href="https://www.google.com/chrome/"><img src="https://www.gestpay.it/gestpay/static/checkbrowser/Chrome-icon_white.png" alt="Chrome"></a></span></span>';
+        var method = "payment_method_" + <?php echo json_encode( $this->id ); ?>;
+        var tls_text_error = <?php echo json_encode( $this->strings['tls_text_error'] ); ?>;
         var button = jQuery( '#place_order[name="woocommerce_checkout_place_order"]' );
         var el = document.getElementsByClassName( 'payment_box ' + method );
         var buttonChecked = jQuery( 'input#' + method + ':checked' ).val();
 
         if ( el.length > 0 && typeof el[0] !== 'undefined' && buttonChecked ) {
-            el[0].innerHTML = '<div class="gestpay-tls-error">' + <?php echo json_encode( $this->strings['tls_text_error'] ); ?> + links + '</div>';
-
-            button.attr( 'disabled', true ).addClass( 'gestpay-disabled' ).unbind( 'mouseenter mouseleave' )
+            el[0].innerHTML = '<div class="gestpay-tls-error">' + tls_text_error + links + '</div>';
+            button.attr( 'disabled', true ).addClass( 'gestpay-disabled' ).unbind( 'mouseenter mouseleave' );
         }
         else {
             button.removeAttr( 'disabled' ).removeClass( 'gestpay-disabled' );
         }
     }
 });
-</script>
-            <?php
+</script><?php
+
         }
 
         /**
@@ -669,7 +668,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                     $this->IFrame->delete_cookies();
                 }
 
-                $this->Helper->log_add( "[INFO] User has been redirected to the order received page. Order: $order_id / status: $order_status." );
+                $this->Helper->log_add( "[INFO] User has been redirected to the order received page, for order n. $order_id" );
 
                 // Make a redirect to the right page.
                 header( "Location: " . $this->Helper->wc_url( 'order_received', $order ) );

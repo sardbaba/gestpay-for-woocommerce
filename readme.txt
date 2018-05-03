@@ -3,7 +3,7 @@ Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, iframe, direct payment gateway
 Requires at least: 4.0.1
 Tested up to: 4.9.5
-Stable tag: 20180412
+Stable tag: 20180426
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20180426 =
+* Fix typo in the JS of the TLS check
 
 = 20180412 =
 * Feature - Added compatibility with WC Sequential Order Numbers Pro.
