@@ -3,7 +3,7 @@ Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, iframe, direct payment gateway
 Requires at least: 4.0.1
 Tested up to: 4.9.5
-Stable tag: 20180426
+Stable tag: 20180516
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,12 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20180516 =
+* Fix - HTML slashes must be escaped inside JS.
+* Fix - No need to instantiate the SOAP Client of order actions in the constructor.
+* Feature - Added the ability to temporarily use unsecure Crypt URL when TLS 1.2 is not available.
+* Feature - Added an option to enable On-Site merchants to set the withAuth parameter to "N".
 
 = 20180426 =
 * Fix typo in the JS of the TLS check

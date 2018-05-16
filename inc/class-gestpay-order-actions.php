@@ -24,7 +24,6 @@ class Gestpay_Order_Actions {
 
         $this->Gestpay = $gestpay;
         $this->Helper = $this->Gestpay->Helper;
-        $this->soapClient = $this->Helper->get_soap_client( $this->Gestpay->ws_S2S_url );
 
     }
 
@@ -54,7 +53,9 @@ class Gestpay_Order_Actions {
             return FALSE;
         }
 
-        if ( ! $this->soapClient ) {
+        $soapClient = $this->Helper->get_soap_client( $this->Gestpay->ws_S2S_url );
+
+        if ( ! $soapClient ) {
             $this->log( $order, $this->Gestpay->strings['refund_err_2'] );
             return FALSE;
         }
@@ -74,7 +75,7 @@ class Gestpay_Order_Actions {
 
         // Do the request to refund the order
         try {
-            $response = $this->soapClient->CallRefundS2S( $params );
+            $response = $soapClient->CallRefundS2S( $params );
 
             $xml = simplexml_load_string( $response->callRefundS2SResult->any );
 
@@ -144,6 +145,8 @@ class Gestpay_Order_Actions {
 
         $order = wc_get_order( $order_id );
 
+        $soapClient = $this->Helper->get_soap_client( $this->Gestpay->ws_S2S_url );
+
         $this->Helper->log_add( '[S2S Settle order_id]: ' . $order_id );
 
         try {
@@ -165,7 +168,7 @@ class Gestpay_Order_Actions {
 
             $this->Helper->log_add( '[CallSettleS2S REQUEST]: ', $params );
 
-            $response = $this->soapClient->CallSettleS2S( $params );
+            $response = $soapClient->CallSettleS2S( $params );
 
             $xml = simplexml_load_string( $response->callSettleS2SResult->any );
 
@@ -210,6 +213,8 @@ class Gestpay_Order_Actions {
 
         $order_id = absint( $_POST['order_id'] );
 
+        $soapClient = $this->Helper->get_soap_client( $this->Gestpay->ws_S2S_url );
+
         $this->Helper->log_add( '[S2S Delete order_id]: ' . $order_id );
 
         try {
@@ -227,7 +232,7 @@ class Gestpay_Order_Actions {
 
             $this->Helper->log_add( '[CallDeleteS2S REQUEST]: ', $params );
 
-            $response = $this->soapClient->CallDeleteS2S( $params );
+            $response = $soapClient->CallDeleteS2S( $params );
 
             $xml = simplexml_load_string( $response->callDeleteS2SResult->any );
 

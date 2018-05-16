@@ -114,7 +114,7 @@ class WC_Settings_Tab_Gestpay {
                 var selAccount = $( '#wc_gestpay_account_type option:selected' ).val();
                 var $pro = $( '#wc_gestpay_param_buyer_email, #wc_gestpay_param_payment_types, #wc_gestpay_param_tokenization_save_token' ).closest( 'table' );
 
-                if ( selAccount == '0' ) {
+                if ( selAccount == '0' || selAccount == '1' ) {
                     $pro.hide(); // table
                     $pro.prev().hide(); // p
                     $pro.prev().prev().hide(); // h2
@@ -125,20 +125,9 @@ class WC_Settings_Tab_Gestpay {
                     $pro.prev().prev().show(); // h2
 
                     // Show/hide On-Site/iFrame parameters.
-                    var $saveTokenRow = $( '#wc_gestpay_param_tokenization_save_token' ).closest( 'tr' );
-                    var $cvvRow = $( '#wc_gestpay_param_tokenization_send_cvv' ).closest( 'tr' );
-                    var $use3dsRow = $( '#wc_gestpay_param_tokenization_use_3ds' ).closest( 'tr' );
-
-                    if ( selAccount != '1' ) {
-                        $saveTokenRow.show();
-                        $cvvRow.show();
-                        $use3dsRow.show();
-                    }
-                    else {
-                        $saveTokenRow.hide();
-                        $cvvRow.hide();
-                        $use3dsRow.hide();
-                    }
+                    $( '#wc_gestpay_param_tokenization_save_token' ).closest( 'tr' ).show();
+                    $( '#wc_gestpay_param_tokenization_send_cvv' ).closest( 'tr' ).show();
+                    $( '#wc_gestpay_param_tokenization_use_3ds' ).closest( 'tr' ).show();
                 }
 
                 $( '#wc_gestpay_param_payment_types' ).trigger( 'change' );
@@ -328,7 +317,7 @@ class WC_Settings_Tab_Gestpay {
 
             // ------------------------------------------------- Auth/iFrame options
             array(
-                'title' => 'Impostazioni extra',
+                'title' => 'Impostazioni On-Site/iFrame',
                 'type' => 'title',
                 'desc' => '',
                 'id' => 'wc_gateway_gestpay_pro_extra_options'
@@ -340,6 +329,14 @@ class WC_Settings_Tab_Gestpay {
                 'desc' => 'Se selezionato memorizza il token e consente di effettuare i pagamenti ricorrenti tramite WooCommerce Subscriptions. Se non selezionato, nessun token verrà mai memorizzato nel sistema e di conseguenza se si sta utilizzando WooCommerce Subscriptions i pagamenti ricorrenti non potranno essere processati. Si consiglia di lasciare sempre attiva l\'opzione se si utilizza WooCommerce Subscriptions.',
                 'id' => 'wc_gestpay_param_tokenization_save_token',
                 'default' => 'no',
+            ),
+            array(
+                'title' => "Token con Autorizzazione:",
+                'type' => 'checkbox',
+                'label' => "Imposta il parametro withAuth",
+                'desc' => "Se selezionato il parametro withAuth sarà valorizzato con 'Y' (autorizzazione richiesta) altrimenti con 'N' (autorizzazione non richiesta); in sandbox è sempre valorizzato con 'N'.",
+                'default' => 'yes',
+                'id' => 'wc_gestpay_token_auth',
             ),
             array(
                 'title' => 'CVV',
@@ -374,14 +371,6 @@ class WC_Settings_Tab_Gestpay {
                 'desc' => "Se selezionato (default), il checkout verrà processato con l'indirizzo di test, altrimenti con quello reale.",
                 'default' => 'yes',
                 'id' => 'wc_gestpay_test_url',
-            ),
-            array(
-                'title' => "Token con Autorizzazione:",
-                'type' => 'checkbox',
-                'label' => "Imposta il parametro withAuth=Y in modalità di test.",
-                'desc' => "Se selezionato il parametro withAuth sarà valorizzato con 'Y' (autorizzazione richiesta) altrimenti con 'N'; in produzione è sempre 'Y'.",
-                'default' => 'yes',
-                'id' => 'wc_gestpay_test_token_auth',
             ),
             array(
                 'title' => 'Debug Log:',

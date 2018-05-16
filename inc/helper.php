@@ -657,7 +657,13 @@ HTML;
      */
     function get_soap_client( $url ) {
         try {
-            $client = new SoapClient( $url );
+            $soapClientOptions = array(
+                'user_agent' => 'Wordpress/GestpayForWoocommerce',
+                'cache_wsdl' => WSDL_CACHE_NONE,
+                'trace' => 1
+            );
+
+            $client = new SoapClient( $url, $soapClientOptions );
         }
         catch ( Exception $e ) {
             $err = sprintf( __( 'Soap Client Request Exception with error %s' ), $e->getMessage() );

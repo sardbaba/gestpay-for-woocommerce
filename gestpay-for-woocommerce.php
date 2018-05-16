@@ -4,7 +4,7 @@
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
  * Description: Integra il sistema di pagamento GestPay by Easy Nolo (Gruppo Banca Sella) in WooCommerce.
- * Version: 20180426
+ * Version: 20180516
  * Author: Easy Nolo (Gruppo Banca Sella)
  * Author URI: http://www.easynolo.it
  *
@@ -170,7 +170,9 @@ function init_wc_gateway_gestpay() {
             $this->is_cvv_required = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_send_cvv' );
             $this->save_token      = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_save_token' );
             $this->is_3ds_enabled  = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_use_3ds' );
-            $this->token_with_auth = $this->is_sandbox && "yes" !== get_option( 'wc_gestpay_test_token_auth' ) ? 'N' : 'Y';
+
+            // Allow merchants to require or not the authorization of the cards (in prod).
+            $this->token_with_auth = $this->is_sandbox || "no" === get_option( 'wc_gestpay_token_auth' ) ? 'N' : 'Y';
 
             // Acquire Pro parameters
             if ( $this->account != GESTPAY_STARTER ) {
@@ -235,13 +237,13 @@ function init_wc_gateway_gestpay() {
 
             $this->ws_S2S_resp_url = get_bloginfo( 'url' ) . '/?wc-api=' . GESTPAY_WC_API;
 
-            // Load the S2S actions for the order.
-            include_once( 'inc/class-gestpay-order-actions.php' );
-            $this->Order_Actions = new Gestpay_Order_Actions( $this );
-
             // Add a tab with Gestpay global options.
             include_once 'inc/class-wc-settings-tab-gestpay.php';
             WC_Settings_Tab_Gestpay::init( $this );
+
+            // Load the S2S actions for the order.
+            include_once 'inc/class-gestpay-order-actions.php';
+            $this->Order_Actions = new Gestpay_Order_Actions( $this );
 
             if ( $this->is_s2s ) {
                 include_once 'inc/class-gestpay-s2s.php';
@@ -309,15 +311,17 @@ function init_wc_gateway_gestpay() {
 ?><script type="text/javascript">
 jQuery( document.body ).on( 'updated_checkout payment_method_selected', function() {
     if ( typeof GestPay !== 'undefined' && typeof GestPay.ChkTLS !== 'undefined' && ! GestPay.ChkTLS.enabled ) {
-        var links = '<span id="UpdateLinks"><span><a target="_blank" href="https://windows.microsoft.com/it-it/internet-explorer/download-ie"><img src="https://www.gestpay.it/gestpay/static/checkbrowser/IE10_white.png" alt="Internet Explorer"></a></span><span><a target="_blank" href="https://www.mozilla.org/it/firefox/new/"><img src="https://www.gestpay.it/gestpay/static/checkbrowser/firefox-icon_white.png" alt="Firefox"></a></span><span><a target="_blank" href="https://www.google.com/chrome/"><img src="https://www.gestpay.it/gestpay/static/checkbrowser/Chrome-icon_white.png" alt="Chrome"></a></span></span>';
-        var method = "payment_method_" + <?php echo json_encode( $this->id ); ?>;
-        var tls_text_error = <?php echo json_encode( $this->strings['tls_text_error'] ); ?>;
+        var method = "payment_method_" + '<?php echo $this->id; ?>';
+        var tls_err_str = '<?php echo $this->strings['tls_text_error']; ?>';
         var button = jQuery( '#place_order[name="woocommerce_checkout_place_order"]' );
         var el = document.getElementsByClassName( 'payment_box ' + method );
         var buttonChecked = jQuery( 'input#' + method + ':checked' ).val();
 
         if ( el.length > 0 && typeof el[0] !== 'undefined' && buttonChecked ) {
-            el[0].innerHTML = '<div class="gestpay-tls-error">' + tls_text_error + links + '</div>';
+            el[0].innerHTML = '<div class="gestpay-tls-error">' +
+                tls_err_str +
+                '<span id="UpdateLinks"><span><a target="_blank" href="https:\/\/windows.microsoft.com\/it-it\/internet-explorer\/download-ie"><img src="https:\/\/www.gestpay.it\/gestpay\/static\/checkbrowser\/IE10_white.png" alt="Internet Explorer"\/><\/a><\/span><span><a target="_blank" href="https:\/\/www.mozilla.org\/it\/firefox\/new\/"><img src="https:\/\/www.gestpay.it\/gestpay\/static\/checkbrowser\/firefox-icon_white.png" alt="Firefox"\/><\/a><\/span><span><a target="_blank" href="https:\/\/www.google.com\/chrome\/"><img src="https:\/\/www.gestpay.it\/gestpay\/static\/checkbrowser\/Chrome-icon_white.png" alt="Chrome"\/><\/a><\/span><\/span>' +
+                "<\/div>";
             button.attr( 'disabled', true ).addClass( 'gestpay-disabled' ).unbind( 'mouseenter mouseleave' );
         }
         else {
@@ -516,7 +520,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
 
             // Create a SOAP client which uses the GestPay webservice and then encrypt values.
             try {
-                $client = new SoapClient( $this->ws_url );
+                $client = $this->Helper->get_soap_client( $this->ws_url );
                 $objectresult = $client->Encrypt( $params );
                 $xml = simplexml_load_string( $objectresult->EncryptResult->any );
 
@@ -584,7 +588,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             // Create a SOAP client using the GestPay webservice
             try {
                 $this->Helper->log_add( "[INFO] Using WS URL: " . $this->ws_url );
-                $client = new SoapClient( $this->ws_url );
+                $client = $this->Helper->get_soap_client( $this->ws_url );
                 $objectresult = $client->Decrypt( $params );
             }
             catch ( Exception $e ) {
