@@ -2,8 +2,8 @@
 Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, iframe, direct payment gateway
 Requires at least: 4.0.1
-Tested up to: 4.9.5
-Stable tag: 20180516
+Tested up to: 4.9.6
+Stable tag: 20180606
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,10 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20180606 =
+* Fix - The JS on configuration page must distinguish between Pro and On-Site/iFrame options.
+* Checks - Verified compatibility with Wordpress 4.9.6 and WooCommerce 3.4.2
 
 = 20180516 =
 * Fix - HTML slashes must be escaped inside JS.

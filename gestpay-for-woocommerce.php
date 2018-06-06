@@ -4,7 +4,7 @@
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
  * Description: Integra il sistema di pagamento GestPay by Easy Nolo (Gruppo Banca Sella) in WooCommerce.
- * Version: 20180516
+ * Version: 20180606
  * Author: Easy Nolo (Gruppo Banca Sella)
  * Author URI: http://www.easynolo.it
  *

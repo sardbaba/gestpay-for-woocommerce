@@ -109,25 +109,40 @@ class WC_Settings_Tab_Gestpay {
 
         ?>
         <script>(function($) {
-            // Show/Hide the Pro section
+            // Show/Hide the Pro and Token section
             $( '#wc_gestpay_account_type' ).change(function() {
                 var selAccount = $( '#wc_gestpay_account_type option:selected' ).val();
-                var $pro = $( '#wc_gestpay_param_buyer_email, #wc_gestpay_param_payment_types, #wc_gestpay_param_tokenization_save_token' ).closest( 'table' );
 
-                if ( selAccount == '0' || selAccount == '1' ) {
-                    $pro.hide(); // table
-                    $pro.prev().hide(); // p
-                    $pro.prev().prev().hide(); // h2
+                var $pro_table = $( '#wc_gestpay_param_buyer_email, #wc_gestpay_param_payment_types' ).closest( 'table' );
+                var $pro_p = $pro_table.prev();
+                var $pro_p_h2 = $pro_p.prev();
+                var $token_table = $( '#wc_gestpay_param_tokenization_save_token' ).closest( 'table' );
+                var $token_p = $token_table.prev();
+                var $token_p_h2 = $token_p.prev();
+
+                if ( selAccount == '0' ) { // Starter
+                    $pro_table.hide();
+                    $pro_p.hide();
+                    $pro_p_h2.hide();
+                    $token_table.hide();
+                    $token_p.hide();
+                    $token_p_h2.hide();
                 }
-                else {
-                    $pro.show(); // table
-                    $pro.prev().show(); // p
-                    $pro.prev().prev().show(); // h2
-
-                    // Show/hide On-Site/iFrame parameters.
-                    $( '#wc_gestpay_param_tokenization_save_token' ).closest( 'tr' ).show();
-                    $( '#wc_gestpay_param_tokenization_send_cvv' ).closest( 'tr' ).show();
-                    $( '#wc_gestpay_param_tokenization_use_3ds' ).closest( 'tr' ).show();
+                else if ( selAccount == '1' ) { // Pro
+                    $pro_table.show();
+                    $pro_p.show();
+                    $pro_p_h2.show();
+                    $token_table.hide();
+                    $token_p.hide();
+                    $token_p_h2.hide();
+                }
+                else { // On-Site and iFrame
+                    $pro_table.show();
+                    $pro_p.show();
+                    $pro_p_h2.show();
+                    $token_table.show();
+                    $token_p.show();
+                    $token_p_h2.show();
                 }
 
                 $( '#wc_gestpay_param_payment_types' ).trigger( 'change' );
