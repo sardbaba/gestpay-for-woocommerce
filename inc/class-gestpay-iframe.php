@@ -24,6 +24,11 @@ class Gestpay_Iframe {
         $this->Helper = $gestpay->Helper;
         $this->can_have_cards = FALSE;
 
+        if ( $this->Gestpay->save_token ) {
+            include_once 'class-gestpay-subscriptions.php';
+            $Subscr = new Gestpay_Subscriptions( $this->Gestpay );
+        }
+
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 
     }
@@ -309,9 +314,6 @@ class Gestpay_Iframe {
             'month' => (int)$xml_response->TokenExpiryMonth,
             'year'  => (int)$xml_response->TokenExpiryYear
         );
-
-        include_once 'class-gestpay-subscriptions.php';
-        $Subscr = new Gestpay_Subscriptions( $this->Gestpay );
 
         // Maybe store the token to the users cards
         $Subscr->Cards->save_card( $the_card );

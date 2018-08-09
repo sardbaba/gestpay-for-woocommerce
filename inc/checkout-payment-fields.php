@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  * for using "nope" instead of "off" as a value of the attribute "autocomplete".
  */
 
-$cards = $this->Subscr->saved_cards;
+$cards = isset( $this->Subscr ) ? $this->Subscr->saved_cards : false;
 
 if ( $this->Gestpay->is_sandbox ) : ?>
 
