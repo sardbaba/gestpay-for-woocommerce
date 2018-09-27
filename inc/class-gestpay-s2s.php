@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
+ * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -291,6 +291,10 @@ class Gestpay_S2S {
         $params->expiryMonth   = $this->Helper->get_post( 'gestpay-cc-exp-month' );
         $params->expiryYear    = $this->Helper->get_post( 'gestpay-cc-exp-year' );  // 2 digits
         $params->withAuth      = $this->Gestpay->token_with_auth;
+
+        if ( ! empty( $this->Gestpay->apikey ) ) {
+            $params->apikey = $this->Gestpay->apikey;
+        }
 
         if ( empty( $params->cardNumber ) && empty( $params->expiryMonth ) && empty( $params->expiryYear ) ) {
             return array(

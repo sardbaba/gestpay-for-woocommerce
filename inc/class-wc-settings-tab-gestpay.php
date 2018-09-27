@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
+ * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -202,6 +202,13 @@ class WC_Settings_Tab_Gestpay {
                 'desc' => "<br>Inserisci il tuo Shop Login fornito da Gestpay. Lo Shop Login è nella forma GESPAY12345 oppure 9012345, rispettivamente per l'ambiente di test e per quello di produzione.",
                 'default' => '',
                 'id' => 'wc_gestpay_shop_login',
+            ),
+            array(
+                'title' => 'API Key:',
+                'type' => 'password',
+                'desc' => "<br>Inserisci opzionalmente l'API Key per abilitare l'autenticazione congiunta o alternativa a quella con indirizzo IP. <a href=\"http://docs.gestpay.it/gs/how-gestpay-works.html#authentication\" target=\"_blank\">Fai click qui per maggiori informazioni</a>",
+                'default' => '',
+                'id' => 'wc_gestpay_api_key',
             ),
             array(
                 'type' => 'sectionend',

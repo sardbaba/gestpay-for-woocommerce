@@ -1,15 +1,15 @@
 === Gestpay for WooCommerce ===
 Contributors: easynolo
-Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, iframe, direct payment gateway
+Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, axerve, iframe, direct payment gateway
 Requires at least: 4.0.1
 Tested up to: 4.9.8
-Stable tag: 20180809
+Stable tag: 20180927
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 2.6
 WC tested up to: 3.4
 
-Gestpay for WooCommerce extends WooCommerce providing the payment gateway for Gestpay.
+Gestpay for WooCommerce extends WooCommerce providing the payment gateway for Gestpay by Axerve (Banca Sella).
 
 == Description ==
 
@@ -58,6 +58,10 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20180927 =
+* Feature - Added apiKey authentication method option
+* Checks - Verified compatibility with WooCommerce 3.4.5
 
 = 20180809 =
 * Fix recurring payments with iFrame/Tokenization

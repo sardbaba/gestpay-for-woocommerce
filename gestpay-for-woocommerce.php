@@ -3,16 +3,16 @@
 /**
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
- * Description: Integra il sistema di pagamento GestPay by Easy Nolo (Gruppo Banca Sella) in WooCommerce.
- * Version: 20180809
- * Author: Easy Nolo (Gruppo Banca Sella)
- * Author URI: http://www.easynolo.it
+ * Description: Abilita il sistema di pagamento GestPay by Axerve (Gruppo Banca Sella) in WooCommerce.
+ * Version: 20180927
+ * Author: Axerve (Gruppo Banca Sella)
+ * Author URI: https://www.axerve.com
  *
  * WC requires at least: 2.6
  * WC tested up to: 3.4
  *
  * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -149,6 +149,7 @@ function init_wc_gateway_gestpay() {
 
             $this->shopLogin      = get_option( 'wc_gestpay_shop_login' );
             $this->account        = get_option( 'wc_gestpay_account_type' );
+            $this->apikey         = get_option( 'wc_gestpay_api_key' );
 
             $this->is_sandbox     = "yes" === get_option( 'wc_gestpay_test_url' );
             $this->force_recrypt  = "yes" === get_option( 'wc_gestpay_force_recrypt' );
@@ -380,7 +381,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 <div class="gestpay-message">
                     <img src="<?php echo $this->logo; ?>" id="gestpay-logo"/>
                     <h3>
-                        <a href="https://www.gestpay.it/gestpay/offerta/professional.jsp" target="_blank">GestPay</a> by <a href="http://www.easynolo.it/" target="_blank">Easy Nolo s.p.a. - Gruppo Banca Sella</a>
+                        <a href="https://www.gestpay.it/" target="_blank">Gestpay</a> by <a href="https://www.axerve.com/" target="_blank">Axerve S.p.A. - Gruppo Banca Sella</a>
                     </h3>
                 </div>
                 <div class="gestpay-message gestpay-form">
@@ -588,6 +589,10 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             $params->shopLogin = $_GET['a'];
             $params->CryptedString = $_GET['b'];
 
+            if ( ! empty( $this->apikey ) ) {
+                $params->apikey = $this->apikey;
+            }
+
             // Create a SOAP client using the GestPay webservice
             try {
                 $this->Helper->log_add( "[INFO] Using WS URL: " . $this->ws_url );
@@ -750,6 +755,10 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             $params->uicCode           = $this->Helper->get_order_currency( $order );
             $params->amount            = number_format( (float)$amount, 2, '.', '' );
             $params->shopTransactionId = $this->Helper->get_transaction_id( $order_id );
+
+            if ( ! empty( $this->apikey ) ) {
+                $params->apikey = $this->apikey;
+            }
 
             // Maybe add the PRO parameters.
             if ( $this->account != GESTPAY_STARTER ) {

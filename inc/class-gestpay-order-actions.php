@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (info@mauromascia.com)
- * Copyright: © 2017-2018 Easy Nolo s.p.a. - Gruppo Banca Sella (www.easynolo.it - info@easynolo.it)
+ * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
+ * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -70,6 +70,10 @@ class Gestpay_Order_Actions {
         $params->uicCode           = $this->Helper->get_order_currency( $order );
         $params->RefundReason      = substr( $reason, 0, 50 );
         $params->chargeBackFraud   = 'N'; // can also be 'Y' but for now can't be specified on UI
+
+        if ( ! empty( $this->Gestpay->apikey ) ) {
+            $params->apikey = $this->Gestpay->apikey;
+        }
 
         $this->Helper->log_add( '[CallRefundS2S REQUEST]: ', $params );
 
@@ -166,6 +170,10 @@ class Gestpay_Order_Actions {
             $params->shopTransID = $order_id;
             //$params->FullFillment = ''; // Not used.
 
+            if ( ! empty( $this->Gestpay->apikey ) ) {
+                $params->apikey = $this->Gestpay->apikey;
+            }
+
             $this->Helper->log_add( '[CallSettleS2S REQUEST]: ', $params );
 
             $response = $soapClient->CallSettleS2S( $params );
@@ -229,6 +237,10 @@ class Gestpay_Order_Actions {
             $params->bankTransactionId = (int)trim( $banktid );
             $params->shopTransactionId = $this->Helper->get_transaction_id( $order_id );
             $params->CancelReason      = 'Transaction withdrawn manually.';
+
+            if ( ! empty( $this->Gestpay->apikey ) ) {
+                $params->apikey = $this->Gestpay->apikey;
+            }
 
             $this->Helper->log_add( '[CallDeleteS2S REQUEST]: ', $params );
 
