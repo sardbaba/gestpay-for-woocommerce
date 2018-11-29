@@ -4,12 +4,12 @@
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
  * Description: Abilita il sistema di pagamento GestPay by Axerve (Gruppo Banca Sella) in WooCommerce.
- * Version: 20180927
+ * Version: 20181129
  * Author: Axerve (Gruppo Banca Sella)
  * Author URI: https://www.axerve.com
  *
  * WC requires at least: 2.6
- * WC tested up to: 3.4
+ * WC tested up to: 3.5
  *
  * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
  * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
@@ -43,13 +43,13 @@ define( 'GESTPAY_MAIN_FILE', __FILE__ );
 // Define the slug used for the endpoint which handles the saved tokens.
 define( 'GESTPAY_ACCOUNT_TOKENS_ENDPOINT', 'saved-cards' );
 
-// Meta used to store the amount used to prevent errors with orders of 0€.
+// Used to store the amount used to prevent errors with orders of 0€.
 define( 'GESTPAY_ORDER_META_AMOUNT', '_wc_gestpay_fix_amount_zero' );
 
-// Meta used to store the token.
+// Used to store the token.
 define( 'GESTPAY_META_TOKEN', '_wc_gestpay_cc_token' );
 
-// Meta used to store the transaction key, bank transaction id and auth code.
+// Used to store the transaction key, bank transaction id and auth code.
 define( 'GESTPAY_ORDER_META_TRANS_KEY', '_wc_gestpay_s2s_transaction_key' );
 define( 'GESTPAY_ORDER_META_BANK_TID', '_wc_gestpay_banktid' );
 define( 'GESTPAY_ORDER_META_AUTH_CODE', '_wc_gestpay_authcode' );
@@ -276,11 +276,8 @@ function init_wc_gateway_gestpay() {
             }
 
             add_action( 'woocommerce_receipt_' . $this->id, array( $this, 'receipt_page' ) );
-
             add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'thankyou_page' ) );
-
             add_action( 'woocommerce_api_' . strtolower( get_class( $this ) ), array( $this, 'check_gateway_response' ) );
-
             add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
             if ( function_exists( 'is_checkout' ) && is_checkout() ) {
@@ -307,6 +304,7 @@ function init_wc_gateway_gestpay() {
          * Passing parameters to an external JS file does not seems to work.
          */
         function check_tls12() {
+
             if ( $this->is_s2s && $this->id === 'wc_gateway_gestpay' ) {
                 // Don't do that with the S2S payment box
                 return;
@@ -723,38 +721,13 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
 
             $this->Helper->log_add( "[INFO] Retrieving args for the order " . $order_id );
 
-            $amount = $override_amount !== FALSE ? $override_amount : $this->Helper->order_get( $order, 'total' );
-
-            if ( empty( $amount ) ) {
-                /*
-                NOTES
-
-                This is a fix for the trial period: orders with 0€ can't be processed.
-                We have to add a 1 cent payment which will be subtracted at the next payment.
-                This amout will be refunded on the first recurring payment.
-                */
-                $amount = 0.01;
-
-                // Add the amount only if it wasn't already added.
-                // If a payment fails, the cent is assigned anyway to the order, so we must not add it again.
-                $maybe_amount_fix = get_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT, TRUE );
-                if ( empty( $maybe_amount_fix ) ) {
-                    $fix_message = "Addebito di 0,01€ per evitare errore per importo nullo su Gestpay. Tale importo verrà stornato automaticamente al primo pagamento ricorrente.";
-                    $this->Helper->log_add( $fix_message . " - Ordine {$order_id}" );
-
-                    update_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT, $amount );
-
-                    $order->add_order_note( $fix_message );
-                }
-            }
-
             // Define GestPay parameters
             $params = new stdClass();
 
             $params->shopLogin         = $this->shopLogin;
             $params->uicCode           = $this->Helper->get_order_currency( $order );
-            $params->amount            = number_format( (float)$amount, 2, '.', '' );
             $params->shopTransactionId = $this->Helper->get_transaction_id( $order_id );
+            $params->amount            = $this->Helper->get_order_amount( $override_amount, $params->uicCode, $order, $order_id );
 
             if ( ! empty( $this->apikey ) ) {
                 $params->apikey = $this->apikey;

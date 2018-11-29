@@ -66,11 +66,7 @@ class Gestpay_S2S {
             );
         }
         else {
-            $s2s_payment_params = array(
-                'cardNumber'  => $this->Helper->get_post( 'gestpay-cc-number' ),
-                'expiryMonth' => $this->Helper->get_post( 'gestpay-cc-exp-month' ),
-                'expiryYear'  => $this->Helper->get_post( 'gestpay-cc-exp-year' )
-            );
+            $s2s_payment_params = array();
         }
 
         $this->Helper->log_add( '======= S2S Payment Phase 1 =======' );
@@ -273,7 +269,6 @@ class Gestpay_S2S {
         }
 
         return FALSE;
-
     }
 
     /**
@@ -287,32 +282,23 @@ class Gestpay_S2S {
         $params = new stdClass();
         $params->shopLogin     = $this->Gestpay->shopLogin;
         $params->requestToken  = "MASKEDPAN";
-        $params->cardNumber    = $this->Helper->get_post( 'gestpay-cc-number' );
-        $params->expiryMonth   = $this->Helper->get_post( 'gestpay-cc-exp-month' );
-        $params->expiryYear    = $this->Helper->get_post( 'gestpay-cc-exp-year' );  // 2 digits
         $params->withAuth      = $this->Gestpay->token_with_auth;
+
+        $this->Helper->s2s_append_card_params( $params );
+        $this->Helper->s2s_maybe_use_buyer( $params );
 
         if ( ! empty( $this->Gestpay->apikey ) ) {
             $params->apikey = $this->Gestpay->apikey;
         }
 
-        if ( empty( $params->cardNumber ) && empty( $params->expiryMonth ) && empty( $params->expiryYear ) ) {
+        $is_card_ok = empty( $params->cardNumber ) && empty( $params->expiryMonth ) && empty( $params->expiryYear );
+
+        // Check card fields.
+        if ( $is_card_ok || ( $this->Gestpay->is_cvv_required && empty( $params->cvv ) ) ) {
             return array(
                 'error_code' => '-1',
                 'error_desc' => 'Per favore controlla che tutti i dati della carta siano valorizzati'
             );
-        }
-
-        // Maybe send also the CVV field.
-        if ( $this->Gestpay->is_cvv_required ) {
-            $params->cvv = $this->Helper->get_post( 'gestpay-cc-cvv' );
-
-            if ( empty( $params->cvv ) ) {
-                return array(
-                    'error_code' => '-1',
-                    'error_desc' => 'Per favore controlla che tutti i dati della carta siano valorizzati'
-                );
-            }
         }
 
         $log_params = clone $params;
@@ -372,8 +358,7 @@ class Gestpay_S2S {
             );
         }
         else {
-            $err = '[' . $xml_response->TransactionErrorCode . '] ' . $xml_response->TransactionErrorDescription;
-            $this->Helper->log_add( '[ERROR]: ' . $err );
+            $this->Helper->log_add( '[ERROR]: [' . $xml_response->TransactionErrorCode . '] ' . $xml_response->TransactionErrorDescription );
 
             return FALSE;
         }

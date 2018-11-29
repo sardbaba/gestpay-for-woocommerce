@@ -3,11 +3,11 @@ Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, axerve, iframe, direct payment gateway
 Requires at least: 4.0.1
 Tested up to: 4.9.8
-Stable tag: 20180927
+Stable tag: 20181129
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 2.6
-WC tested up to: 3.4
+WC tested up to: 3.5
 
 Gestpay for WooCommerce extends WooCommerce providing the payment gateway for Gestpay by Axerve (Banca Sella).
 
@@ -58,6 +58,13 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20181129 =
+* Feature - Added new available currencies
+* Fix - Some currencies (JPY, PKR, IDR, KRW) does not allow decimals in the amount; VND allow just one decimal.
+* Fix - On S2S (On-Site version) added Buyer Name field.
+* Fix - Allow Google Analytics tracking (utm_nooverride)
+* Checks - Verified compatibility with WooCommerce 3.5.1
 
 = 20180927 =
 * Feature - Added apiKey authentication method option

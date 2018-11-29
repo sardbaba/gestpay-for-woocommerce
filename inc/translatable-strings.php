@@ -143,6 +143,9 @@ return array(
     "s2s_ccn" =>
         __( "Credit Card Number", $t ),
 
+    "s2s_buyer_name" =>
+        __( "Cardholder Name", $t ),
+
     "refund_err_1" =>
         __( "Order can't be refunded: Bank Transaction ID not found.", $t ),
 

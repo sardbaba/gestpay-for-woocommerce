@@ -56,6 +56,34 @@ class WC_Gateway_GestPay_Helper {
         $this->load_card_icons();
     }
 
+    /**
+     * Add card parameters from the card form.
+     *
+     * @param $params - Array of parameters on which append card informations
+     */
+    public function s2s_append_card_params( &$params ) {
+
+        $params->cardNumber    = $this->get_post( 'gestpay-cc-number' );
+        $params->expiryMonth   = $this->get_post( 'gestpay-cc-exp-month' );
+        $params->expiryYear    = $this->get_post( 'gestpay-cc-exp-year' );  // 2 digits
+
+        if ( $this->gw->is_cvv_required ) {
+            $params->cvv = $this->get_post( 'gestpay-cc-cvv' );
+        }
+    }
+
+    /**
+     * Maybe use buyerName from the cardholder info
+     *
+     * @param $params - Array of parameters on which change buyer informations
+     */
+    public function s2s_maybe_use_buyer( &$params ) {
+        $bn = $this->get_post( 'gestpay-cc-buyer-name' );
+        if ( $this->gw->param_buyer_name && !empty( $bn ) ) {
+            $params->buyerName = $bn;
+        }
+    }
+
     function get_cards_settings() {
         return array(
             'cards' => array(
@@ -276,36 +304,20 @@ class WC_Gateway_GestPay_Helper {
         return 2; // en
     }
 
+    function get_gestpay_currencies() {
+        return include 'gestpay-currencies.php';
+    }
+
     /**
      * Mapper for the Gestpay currency codes.
      */
     function get_order_currency( $order ) {
-        $gestpay_allowed_currency_codes = array(
-            'USD' =>   '1',  // United States Dollar
-            'GBP' =>   '2',  // United Kingdom Pound
-            'CHF' =>   '3',  // Switzerland Franc
-            'DKK' =>   '7',  // Denmark Krone
-            'NOK' =>   '8',  // Norway Krone
-            'SEK' =>   '9',  // Sweden Krona
-            'CAD' =>  '12',  // Canada Dollar
-            'ITL' =>  '18',  // Italian Lira
-            'JPY' =>  '71',  // Japan Yen
-            'HKD' => '103',  // Hong Kong Dollar
-            'AUD' => '109',  // Australia Dollar
-            'SGD' => '124',  // Singapore Dollar
-            'CNY' => '144',  // China Yuan Renminbi
-            'HUF' => '153',  // Hungary Forint
-            'CZK' => '223',  // Czech Republic Koruna
-            'BRL' => '234',  // Brazil Real
-            'PLN' => '237',  // Poland Zloty
-            'EUR' => '242',  // Euro Member Countries
-            'RUB' => '244',  // Russian Ruble
-        );
+        $gestpay_allowed_currency_codes = $this->get_gestpay_currencies();
 
         $the_currency = $this->get_currency( $order );
 
         if ( in_array( $the_currency, array_keys( $gestpay_allowed_currency_codes ) ) ) {
-            $gp_currency = $gestpay_allowed_currency_codes[$the_currency];
+            $gp_currency = $gestpay_allowed_currency_codes[$the_currency]['iso'];
         }
         else {
             $gp_currency = '242'; // Set EUR as default currency code
@@ -331,6 +343,57 @@ class WC_Gateway_GestPay_Helper {
         }
 
         return $the_currency;
+    }
+
+    /**
+     * Get the right value based on currency. Some of them does not allow to use decimals.
+     */
+    function get_order_amount( $override_amount, $uic_code, $order, $order_id ) {
+
+        $order_currency = $this->get_currency( $order );
+        $gestpay_currencies = $this->get_gestpay_currencies();
+
+        if ( ! isset( $gestpay_currencies[$order_currency] ) ) {
+            return 0;
+        }
+
+        $gestpay_currency = $gestpay_currencies[$order_currency];
+
+        $this->log_add( ">> Using currency " . var_export( $gestpay_currency, true ) );
+
+        $amount = $override_amount !== FALSE ? $override_amount : $this->order_get( $order, 'total' );
+
+        if ( empty( $amount ) ) {
+            /*
+            NOTES
+
+            This is a fix for the trial period: orders with 0€ can't be processed.
+            We have to add a 1 cent payment which will be subtracted at the next payment.
+            This amout will be refunded on the first recurring payment.
+            */
+            $amount = $gestpay_currency['min'];
+
+            // Add the amount only if it wasn't already added.
+            // If a payment fails, the cent is assigned anyway to the order, so we must not add it again.
+            $maybe_amount_fix = get_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT, TRUE );
+            if ( empty( $maybe_amount_fix ) ) {
+                $fix_message = "Addebito di %s %s per evitare errore per importo nullo su Gestpay. Tale importo verrà stornato automaticamente al primo pagamento ricorrente - Ordine n. %s";
+                $this->log_add( sprintf( $fix_message, $amount, $order_currency, $order_id ) );
+
+                update_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT, $amount );
+
+                $order->add_order_note( $fix_message );
+            }
+        }
+
+        $amount = number_format( (float)$amount, 2, '.', '' );
+
+        if ( isset( $gestpay_currency['decimal'] ) && $gestpay_currency['decimal'] != 2 ) {
+            // Maybe apply a round (some currencies does not allow decimals)
+            $amount = round( $amount, $gestpay_currency['decimal'], PHP_ROUND_HALF_DOWN );
+        }
+
+        return $amount;
     }
 
     /**
@@ -410,10 +473,14 @@ class WC_Gateway_GestPay_Helper {
                 return $order->get_view_order_url();
 
             case 'order_received':
-                return $this->gw->get_return_url( $order );
+                return add_query_arg( 'utm_nooverride', '1',
+                    $this->gw->get_return_url( $order )
+                );
 
             case 'order_failed':
-                return wc_get_checkout_url();
+                return add_query_arg( 'utm_nooverride', '1',
+                    wc_get_checkout_url()
+                );
 
             case 'pay':
                 return $order->get_checkout_payment_url( true );
@@ -589,48 +656,6 @@ HTML;
      */
     function get_current_language_2dgtlwr() {
         return substr( strtolower( $this->get_current_language() ), 0, 2 );
-    }
-
-    /**
-     * Returns the OK URL.
-     *
-     * @param WC_Order $order
-     *
-     * @return string
-     */
-    function get_url_ok( $order ) {
-        return add_query_arg( 'utm_nooverride', '1',
-            $this->adjust_url_lang( $this->wc_url( 'order_received', $order ) )
-        );
-    }
-
-    /**
-     * Returns the KO URL.
-     *
-     * @param WC_Order $order
-     *
-     * @return string
-     */
-    function get_url_ko( $order ) {
-        return add_query_arg( 'utm_nooverride', '1',
-            $this->adjust_url_lang( $this->wc_url( 'order_failed', $order ) )
-        );
-    }
-
-    /**
-     * Adjust the URL (pre-path, pre-domain or query)
-     * ATM only qTranslate is supported
-     *
-     * @param string $url
-     *
-     * @return string
-     */
-    function adjust_url_lang( $url ) {
-        if ( $this->is_qtranslate_enabled() && function_exists( 'qtrans_convertURL' ) ) {
-            return qtrans_convertURL( $url, $this->get_current_language_2dgtlwr() );
-        }
-
-        return $url;
     }
 
     /**

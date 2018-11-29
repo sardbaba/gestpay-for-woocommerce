@@ -69,6 +69,9 @@ class Gestpay_Subscriptions {
         if ( ! empty( $args['token'] ) ) {
             // S2S Payment Phase 1 with Token
             $params->tokenValue = $args['token'];
+
+            // Maybe use buyerName from the card info
+            $this->Helper->s2s_maybe_use_buyer( $params );
         }
         elseif ( ! empty( $args['pares'] ) ) {
             // S2S Payment Phase 3
@@ -77,13 +80,10 @@ class Gestpay_Subscriptions {
         }
         else {
             // S2S Payment Phase 1 without Token
-            $params->cardNumber  = $this->Helper->get_post( 'gestpay-cc-number' );
-            $params->expiryMonth = $this->Helper->get_post( 'gestpay-cc-exp-month' );
-            $params->expiryYear  = $this->Helper->get_post( 'gestpay-cc-exp-year' );
+            $this->Helper->s2s_append_card_params( $params );
 
-            if ( $this->Gestpay->is_cvv_required ) {
-                $params->cvv     = $this->Helper->get_post( 'gestpay-cc-cvv' );
-            }
+            // Maybe use buyerName from the card info
+            $this->Helper->s2s_maybe_use_buyer( $params );
         }
 
         // Maybe overwrite shopTransactionId (for subscription)
@@ -149,6 +149,7 @@ class Gestpay_Subscriptions {
                     $this->Helper->log_add( '[ATTENZIONE]: Impossibile ricevere la TransactionKey in fase di autorizzazione. Verificare che il parametro sia abilitato nella risposta' );
                 }
 
+                // -- Send to Phase II
                 return array(
                     'VbVRisp' => (string)$xml_response->VbV->VbVRisp,
                 );

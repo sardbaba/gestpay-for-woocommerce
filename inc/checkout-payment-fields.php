@@ -136,6 +136,23 @@ if ( $this->Gestpay->is_sandbox ) : ?>
     <div id="gestpay-s2s-new-card" style="display:<?php echo $div_style; ?>; margin-top: 10px;">
 
     <?php
+    if ( $this->Gestpay->param_buyer_name ) {
+        // --- buyer name
+        woocommerce_form_field(
+            'gestpay-cc-buyer-name',
+            array(
+                'type' => 'text',
+                'label' => $this->Gestpay->strings['s2s_buyer_name'],
+                'maxlength' => 50,
+                'required' => true,
+                'custom_attributes' => array(
+                    'autocomplete' => 'nope',
+                    'style' => 'width:180px;'
+                ),
+            )
+        );
+    }
+
     // --- credit card number
     woocommerce_form_field(
         'gestpay-cc-number',
