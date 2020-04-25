@@ -31,7 +31,7 @@ class Gestpay_Subscriptions {
             /*
                 NOTES
 
-                Recurring payments can only be processed if the account has the 3D Secure disables
+                Recurring payments can only be processed if the account has the 3D Secure disabled
                 because the user can't insert the secure code when payments runs on background.
              */
 
@@ -114,7 +114,7 @@ class Gestpay_Subscriptions {
     public function maybe_save_token( $xml_response, $order_id ) {
 
         if ( ! $this->Gestpay->save_token ) {
-            $this->Helper->log_add( '[OnSite] TOKEN storage is disabled.' );
+            $this->Helper->log_add( '[OnSite maybe_save_token] TOKEN storage is disabled.' );
             return FALSE;
         }
 
@@ -125,7 +125,7 @@ class Gestpay_Subscriptions {
         );
 
         if ( empty( $response['token'] ) ) {
-            $this->Helper->log_add( '[OnSite] Token was not provided in the xml_response.' );
+            $this->Helper->log_add( '[OnSite maybe_save_token] Token was not provided in the xml_response.' );
             return FALSE;
         }
 
@@ -134,6 +134,39 @@ class Gestpay_Subscriptions {
         // Maybe store also the card to the users cards
         $this->Cards->save_card( $response );
     }
+
+    /**
+     * Check with if the transaction has been already paid.
+     * This can be useful to prevent multiple payment for the same transaction.
+     */
+    private function has_been_already_paid( $order_id, $client, $p ) {
+
+        if ( defined( 'GESTPAY_S2S_ALREADY_PAID_API' ) && GESTPAY_S2S_ALREADY_PAID_API ) {
+            $params = new stdClass();
+            $params->shopLogin = $p->shopLogin;
+            $params->shopTransactionId = $p->shopTransactionId;
+            if ( !empty( $p->apikey ) ) $params->apikey = $p->apikey;
+
+            try {
+                $response = $client->CallReadTrxS2S( $params );
+                $xml_response = simplexml_load_string( $response->callReadTrxS2SResult->any );
+
+                if ( $xml_response->TransactionResult == "OK" ) {
+                    return TRUE;
+                }
+            }
+            catch ( Exception $e ) {
+                $this->Helper->log_add( '[ERROR CallReadTrxS2S]: ' . $e->getMessage() );
+            }
+            return FALSE;
+        }
+        else {
+            // This is the faster method
+            $banktid = get_post_meta( $order_id, GESTPAY_ORDER_META_BANK_TID, TRUE );
+            return !empty( $banktid ) ? TRUE : FALSE;
+        }
+    }
+
 
     /**
      * Do the payment through S2S
@@ -146,7 +179,7 @@ class Gestpay_Subscriptions {
             return FALSE;
         }
 
-         // Maybe overwrite amount (for subscription)
+        // Maybe overwrite amount (for subscription)
         $override_amount = FALSE;
         if ( ! empty( $args['amount'] ) ) {
             $override_amount = $args['amount'];
@@ -190,6 +223,12 @@ class Gestpay_Subscriptions {
         // Maybe overwrite shopTransactionId (for subscription)
         if ( ! empty( $args['shopTransactionId'] ) ) {
             $params->shopTransactionId = $this->Helper->get_transaction_id( $args['shopTransactionId'] );
+        }
+
+        $has_been_already_paid = $this->has_been_already_paid( $order_id, $client, $params );
+        if ( $has_been_already_paid ) {
+            $this->Helper->log_add( '[WARNING] Il pagamento per l\'ordine '+ $order_id +' è stato interrotto perché è già stato pagato!' );
+            return FALSE;
         }
 
         // Do the request to retrieve the pay

@@ -51,6 +51,13 @@ class Gestpay_S2S {
      */
     function validate_payment_fields() {
 
+        // Skip validation if reusing a token
+        $cc_token = $this->Helper->get_post( 'gestpay-s2s-cc-token' );
+        if ( !empty( $cc_token ) && $cc_token != 'new-card' ) {
+            return TRUE;
+        }
+
+        // Allow actors to change error string values
         $errors = apply_filters( 'gestpay_s2s_payment_fields_error_strings', array(
             'cc_number' => "Si prega di valorizzare correttamente il numero di carta di credito",
             'cc_expiry' => "Si prega di valorizzare mese/anno di scadenza",

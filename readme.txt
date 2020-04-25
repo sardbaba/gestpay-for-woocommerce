@@ -2,12 +2,12 @@
 Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, axerve, iframe, direct payment gateway
 Requires at least: 4.0.1
-Tested up to: 5.2
-Stable tag: 20191022
+Tested up to: 5.4
+Stable tag: 20200500.test
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 3.0
-WC tested up to: 3.7
+WC tested up to: 4.0
 
 Gestpay for WooCommerce extends WooCommerce providing the payment gateway for Gestpay by Axerve (Banca Sella).
 
