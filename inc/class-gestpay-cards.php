@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -15,15 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 add_action( 'init', 'wc_gateway_gestpay_s2s_init' );
 function wc_gateway_gestpay_s2s_init() {
 
-    add_action( 'wp_ajax_gestpay_s2s_delete_card',
-        array( 'Gestpay_Cards', 'ajax_delete_card' ) );
-
-    add_action( 'wp_ajax_gestpay_s2s_set_default_card',
-        array( 'Gestpay_Cards', 'ajax_set_default_card' ) );
-
-    add_action( 'wp_ajax_gestpay_s2s_unset_default_card',
-        array( 'Gestpay_Cards', 'ajax_unset_default_card' ) );
-
+    add_action( 'wp_ajax_gestpay_s2s_delete_card', array( 'Gestpay_Cards', 'ajax_delete_card' ) );
+    add_action( 'wp_ajax_gestpay_s2s_set_default_card', array( 'Gestpay_Cards', 'ajax_set_default_card' ) );
+    add_action( 'wp_ajax_gestpay_s2s_unset_default_card', array( 'Gestpay_Cards', 'ajax_unset_default_card' ) );
 }
 
 class Gestpay_Cards {
@@ -36,9 +30,7 @@ class Gestpay_Cards {
         $this->Gestpay = $gestpay;
         $this->current_user_id = get_current_user_id();
 
-        add_action( 'woocommerce_account_' . GESTPAY_ACCOUNT_TOKENS_ENDPOINT . '_endpoint',
-            array( $this, 'endpoint_content' ) );
-
+        add_action( 'woocommerce_account_' . GESTPAY_ACCOUNT_TOKENS_ENDPOINT . '_endpoint', array( $this, 'endpoint_content' ) );
     }
 
     /**
@@ -47,10 +39,10 @@ class Gestpay_Cards {
     public function endpoint_content() {
 
         // Variables used inside the template "my-cards"
-
-        $trans_str  = $this->Gestpay->strings;
+        $trans_str = $this->Gestpay->strings;
         $plugin_url = $this->Gestpay->plugin_url;
-        $cards      = $this->get_cards();
+        $can_save_token = $this->can_use_token();
+        $cards = $this->get_cards();
 
         // icons
         $delete_img     = esc_attr( $plugin_url . 'images/delete.png' );
@@ -61,7 +53,6 @@ class Gestpay_Cards {
         $default_cc = get_user_meta( $this->current_user_id, '_wc_gestpay_cc_default', true );
 
         include_once apply_filters( 'gestpay_my_cards_template', 'my-cards.php' );
-
     }
 
     public function can_use_token() {
@@ -78,16 +69,17 @@ class Gestpay_Cards {
     public function save_card( $card ) {
 
         if ( $this->can_use_token() ) {
-            if ( $cards = get_user_meta( $this->current_user_id, GESTPAY_META_TOKEN, true ) ) {
-                if ( ! isset( $cards[$card['token']] ) ) {
-                    update_user_meta( $this->current_user_id, GESTPAY_META_TOKEN, ( $cards + array( $card['token'] => $card ) ) );
-                }
-            }
-            else {
-                update_user_meta( $this->current_user_id, GESTPAY_META_TOKEN, array( $card['token'] => $card ) );
-            }
-        }
+            $card['timestamp'] = time();
+            $cards = get_user_meta( $this->current_user_id, GESTPAY_META_TOKEN, true );
 
+            if ( empty( $cards ) ) {
+                $cards = array();
+            }
+
+            $cards[$card['token']] = $card; // add or replace
+
+            update_user_meta( $this->current_user_id, GESTPAY_META_TOKEN, $cards );
+        }
     }
 
     public static function ajax_delete_card() {
@@ -107,7 +99,6 @@ class Gestpay_Cards {
         }
 
         wp_die();
-
     }
 
     public static function ajax_set_default_card() {
@@ -117,7 +108,6 @@ class Gestpay_Cards {
         }
 
         wp_die();
-
     }
 
     public static function ajax_unset_default_card() {
@@ -127,6 +117,5 @@ class Gestpay_Cards {
         }
 
         wp_die();
-
     }
 }

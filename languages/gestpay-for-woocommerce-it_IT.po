@@ -130,9 +130,6 @@ msgstr "C'è stato un errore nella richiesta, per favore prova di nuovo."
 msgid "GestPay Subscription Renewal Payment Approved"
 msgstr "Pagamento di rinnovo con GestPay Approvato"
 
-msgid "An error occours on sella_s2s_payment."
-msgstr "Errore in sella_s2s_payment."
-
 msgid "You are trying to force a recurring payment but the 3D Secure protocol is enabled."
 msgstr "Stai cercando di forzare un pagamento ricorrente ma il protocollo 3D Secure è abilitato."
 
@@ -154,8 +151,11 @@ msgstr "Elimina"
 msgid "Default"
 msgstr "Predefinita"
 
-msgid "There is not yet any credit card saved."
-msgstr "Non è ancora stata salvata alcuna carta di credito."
+msgid "There is not yet any token of credit card saved."
+msgstr "Non è stato ancora salvato alcun token di carta di credito."
+
+msgid "The storage of the credit card token is disabled."
+msgstr "Il salvataggio dei token di carta di credito è disabilitato."
 
 msgid "Proceed"
 msgstr "Procedi"
@@ -198,3 +198,18 @@ msgstr "Errore di validazione: si prega di ricontrollare i campi obbligatori e d
 
 msgid "Cardholder Name"
 msgstr "Nome del proprietario della carta"
+
+msgid "Please select your bank from the list. You will be redirected to your home banking portal to complete the operation"
+msgstr "Si prega di selezionare la propria banca dall'elenco. Sarete reindirizzati al vostro portale di home banking per completare l'operazione"
+
+msgid "Bank/Institute Selection:"
+msgstr "Scelta di Banca/Istituto:"
+
+msgid "Can't find your bank? Click here."
+msgstr "Non trovi la tua banca? Fai click qui."
+
+msgid "Please select a bank/institute to pay with MyBank."
+msgstr "È necessario selezionare una banca/istituto per pagare con MyBank."
+
+msgid "Secure payments through your online banking account.<br>Learn more"
+msgstr "Pagamenti sicuri attraverso il servizio di home banking della propria banca.<br>Per saperne di più"

@@ -2,18 +2,18 @@
 Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, axerve, iframe, direct payment gateway
 Requires at least: 4.0.1
-Tested up to: 4.9.8
-Stable tag: 20181129
+Tested up to: 5.2
+Stable tag: 20191022
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
-WC requires at least: 2.6
-WC tested up to: 3.5
+WC requires at least: 3.0
+WC tested up to: 3.7
 
 Gestpay for WooCommerce extends WooCommerce providing the payment gateway for Gestpay by Axerve (Banca Sella).
 
 == Description ==
 
-Gestpay for WooCommerce is a payment gateway for WooCommerce which allows you to use Gestpay on your WooCommerce-powered website.
+Gestpay for WooCommerce is a payment gateway for WooCommerce which allows you to use [Gestpay](https://www.gestpay.it/ "Gestpay Website") on your WooCommerce-powered website.
 
 There are four operational modes in this plugin, which depends on Gestpay version you are using:
 
@@ -50,14 +50,54 @@ Here is a list of filters and actions used in this plugin:
 * gestpay_settings_tab
 * gestpay_my_cards_template
 * gestpay_cvv_fancybox
+* gestpay_gateway_cards_images
+* gestpay_alter_order_id -> this can be used to add, for example, a prefix to the order ID
+* gestpay_revert_order_id -> this must be used to revert back the order ID changed with the `gestpay_alter_order_id` filter
 
 == Installation ==
 
-1. Ensure you have the WooCommerce 2.6+ plugin installed
+1. Ensure you have the WooCommerce 3+ plugin installed
 2. Search "Gestpay for WooCommerce" or upload and install the zip file, in the same way you'd install any other plugin.
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20191022 =
+* Fixed return URL and message when the change of the tokenized card, related to a subscription, is failed.
+
+= 20191012 =
+* New: filters `gestpay_alter_order_id` and `gestpay_revert_order_id`
+* Improvement for WooCommerce Subscriptions compatibility: added ability to change the tokenized card for an active Subscriptions: the customer will be able to change the card that will be used to pay the next recurring payment.
+* Improvement for developers: tokenized cards will also have the expiry date stored on the post meta GESTPAY_META_TOKEN of the order_id.
+
+= 20190909 =
+* Feature PayPal - Added ability to retrieve a Token for Subscription payments (with external plugin WooCommerce Subscriptions).
+* Added 3DS 2.0 support. [Read more](https://docs.gestpay.it/soap/3ds-2.0/how-change-integration/ "3DS 2.0")
+* Fix WooCommerce 3.7.0 compatibility for the configuration page.
+
+= 20190701 =
+* Subscriptions - Fix token saving on the parent of a renewal order after is failed and is manually paid.
+
+= 20190515 =
+* Subscriptions - Added ability, for S2S and iFrame accounts, to use a second account with 3DS disabled. In this way it will be possible to use the main account with 3DS activated for the first payment and the second account (with 3DS disabled) for recurring payments.
+* Added MyBank small icon in the card list
+* Added filter `gestpay_gateway_cards_images`
+* Cleaned up old code for WC < 3.x (which is not supported anymore)
+* Checks - Verified compatibility with WooCommerce 3.6.2 and Wordpress 5.2
+
+= 20190411 =
+* Fix S2S - Show the input form for the card when tokens are disabled.
+* Fix MyBank - When using MyBank on mobile devices, the bank/institute list must be shown and the Customer must select one of them before proceeding.
+* Feature MyBank - Added MyBank text/logos/style to be compliant with the MyBank Style Guide requirements.
+* Feature MyBank - Added an option for MyBank to be able to force also Customers on desktop devices to select a bank/institute from the website. Removed ability to change title and description for MyBank: these must be statically assigned.
+* Cleaned up some of the old code for WC < 3.x (which is not supported anymore); payment types classes refactoring.
+
+= 20190320 =
+* Fix - flush rewrite rules causes issues with WPML: just flush only once, after plugin activation.
+* Fix - On S2S if the customer select a default card, the new card form must be hidden.
+* Fix - Changed costant name to force sending email to WC_GATEWAY_GESTPAY_FORCE_SEND_EMAIL.
+* Fix - On S2S use the parent order id to handle failed recurring payments.
+* Checks - Verified compatibility with WooCommerce 3.5.7 and Wordpress 5.1.1
 
 = 20181129 =
 * Feature - Added new available currencies

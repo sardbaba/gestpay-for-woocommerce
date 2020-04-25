@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -25,7 +25,6 @@ class Gestpay_S2S {
         $this->Subscr = new Gestpay_Subscriptions( $gestpay );
 
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
-
     }
 
     /**
@@ -36,13 +35,14 @@ class Gestpay_S2S {
         $fancybox_path = $this->Helper->plugin_url . 'lib/jquery.fancybox';
         wp_enqueue_style( 'gestpay-for-woocommerce-fancybox-css', $fancybox_path . '.min.css' );
         wp_enqueue_script( 'gestpay-for-woocommerce-fancybox-js', $fancybox_path . '.min.js', array( 'jquery' ), WC_VERSION, true );
-
     }
+
 
     /**
      * Output a payment box containing your direct payment form
      */
     public function payment_fields() {
+
         include_once 'checkout-payment-fields.php';
     }
 
@@ -51,22 +51,32 @@ class Gestpay_S2S {
      */
     public function process_payment( $order ) {
 
+        $s2s_payment_params = array();
+
         if ( $this->Gestpay->save_token ) {
-            $token = $this->get_token( $order );
 
-            if ( ! $token ) {
-                wc_add_notice( $this->Gestpay->strings['s2s_token_error'], 'error' );
+            $token = $this->Helper->get_post( 'gestpay-s2s-cc-token' );
+            if ( ! empty( $token ) && $token != 'new-card' ) {
 
-                $this->Helper->log_add( '>> ERROR >> Request Token Failed!' );
-                return new WP_Error( 'gestpay-error', 'Empty Token' );
+                $this->Helper->log_add( '[reusing token]: ' . $token );
+
+                $order_id = $order->get_id();
+
+                if ( !empty( $this->Subscr->saved_cards ) ) {
+                    $card_token = array();
+                    foreach ( $this->Subscr->saved_cards as $card ) {
+                        if ( $card['token'] == $token ) {
+                            $card_token = $card;
+                            break;
+                        }
+                    }
+
+                    $this->Helper->set_order_token( $order, $card_token );
+                }
+
+                // Add the token to the parameters, so that it will be used to make the first payment
+                $s2s_payment_params['token'] = $token;
             }
-
-            $s2s_payment_params = array(
-                'token' => $token
-            );
-        }
-        else {
-            $s2s_payment_params = array();
         }
 
         $this->Helper->log_add( '======= S2S Payment Phase 1 =======' );
@@ -102,9 +112,8 @@ class Gestpay_S2S {
             | = Phase I: authorization request =
             |
             | A standard authorization request is made. If the card is recognised as 3D, the outcome of the
-            | request is a specific error code (8006) which is readable by means of the ErrorCode
-            | method. The error description (Verified By Visa) will be readable by means of the
-            | ErrorDescription method.
+            | request is a specific error code (8006) which is readable by means of the ErrorCode method.
+            | The error description (Verified By Visa) will be readable by means of the ErrorDescription method.
             | In this phase the following additional information is also shown. This information is required
             | during the payment process and is specific to Verified by Visa transactions. In particular it is
             | necessary to acquire the transaction code, which can be read by means of the TransKey
@@ -134,11 +143,13 @@ class Gestpay_S2S {
         }
 
         if ( ! empty( $s2s_response['error_code'] ) && ! empty( $s2s_response['error_desc'] ) ) {
-            $order->update_status( 'failed', 'Payment Error: ' . $s2s_response['error_code'] . ' ' . $s2s_response['error_desc'] );
+            if ( ! wcs_is_subscription( $order ) ) {
+                // Update to failed only if is not a card change
+                $order->update_status( 'failed', 'Payment Error: ' . $s2s_response['error_code'] . ' ' . $s2s_response['error_desc'] );
+            }
         }
 
         return FALSE;
-
     }
 
     /**
@@ -176,7 +187,7 @@ class Gestpay_S2S {
                 'c' => add_query_arg(
                     array(
                         'wc-action' => 'checkVbV',
-                        'order_id'  => $this->Helper->order_get( $order, 'id' ),
+                        'order_id'  => $order->get_id(),
                     ),
                     $this->Gestpay->ws_S2S_resp_url
                 )
@@ -186,7 +197,6 @@ class Gestpay_S2S {
 
             echo $this->Helper->get_gw_form( $this->Gestpay->pagam3d_url, $input_params, $order );
         }
-
     }
 
     /**
@@ -212,155 +222,34 @@ class Gestpay_S2S {
             | - shopTransactionID (transaction identification code)
             | - transKey (transaction ID acquired during Phase I)
             | - PARes (encrypted string containing the result of authentication acquired during Phase II)
-            | The result of the transaction displayed by Gestpay will be interpreted as depicted in the
-            | Authorization Request section.
+            | The result of the transaction displayed by Gestpay will be interpreted as depicted in the Authorization Request section.
             | ----------------------------------------------------------------------------------------------------------
             */
 
-            $order = new WC_Order( $_GET['order_id'] );
+            $order = wc_get_order( absint( $_GET['order_id'] ) );
             if ( $order ) {
 
                 $this->Helper->log_add( '======= S2S Payment Phase 3 =======' );
 
                 $response = $this->Subscr->s2s_payment( $order, array( 'pares' => $_REQUEST['PaRes'] ) );
 
-                header( "Location: " . $this->Helper->wc_url( 'order_received', $order ) );
+                // Fix 20191022
+                if ( !empty( $response['pay_result'] ) && $response['pay_result'] == 'KO' ) {
+
+                    if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order ) ) {
+                        $url = $order->get_view_order_url();
+                    }
+                    else {
+                        $url = $this->Helper->wc_url( 'order_failed', $order );
+                    }
+                }
+                else {
+                    $url = $this->Helper->wc_url( 'order_received', $order );
+                }
+
+                header( "Location: " . $url );
                 die();
             }
-
-        }
-
-    }
-
-    public function get_token( $order ) {
-
-        // Use the selected token if any
-        $token = $this->Helper->get_post( 'gestpay-s2s-cc-token' );
-        $order_id = $this->Helper->order_get( $order, 'id' );
-
-        if ( ! empty( $token ) && $token != 'new-card' ) {
-
-            $this->Helper->log_add( '[reusing token]: ' . $token );
-
-            // Store the selected token in the order
-            update_post_meta( $order_id, GESTPAY_META_TOKEN, $token );
-
-            return $token;
-        }
-        else {
-            // Request a new token
-            $response = $this->s2s_token_request( $order );
-
-            if ( ! empty( $response['token'] ) ) {
-
-                // Store the token in the order
-                update_post_meta( $order_id, GESTPAY_META_TOKEN, $response['token'] );
-
-                // Maybe store the card to the users cards
-                $this->Subscr->Cards->save_card( $response );
-
-                return $response['token'];
-            }
-            else {
-                if ( ! empty( $response['error_code'] ) && ! empty( $response['error_desc'] ) ) {
-                    $order->update_status( 'failed', 'Request Token Error: ' . $response['error_code'] . ' ' . $response['error_desc'] );
-                }
-            }
-        }
-
-        return FALSE;
-    }
-
-    /**
-     * Request a new token
-     */
-    public function s2s_token_request( $order ) {
-
-        if ( ! ( $client = $this->Helper->get_soap_client( $this->Gestpay->ws_S2S_url ) ) ) return FALSE;
-
-        // Set required parameters
-        $params = new stdClass();
-        $params->shopLogin     = $this->Gestpay->shopLogin;
-        $params->requestToken  = "MASKEDPAN";
-        $params->withAuth      = $this->Gestpay->token_with_auth;
-
-        $this->Helper->s2s_append_card_params( $params );
-        $this->Helper->s2s_maybe_use_buyer( $params );
-
-        if ( ! empty( $this->Gestpay->apikey ) ) {
-            $params->apikey = $this->Gestpay->apikey;
-        }
-
-        $is_card_ok = empty( $params->cardNumber ) && empty( $params->expiryMonth ) && empty( $params->expiryYear );
-
-        // Check card fields.
-        if ( $is_card_ok || ( $this->Gestpay->is_cvv_required && empty( $params->cvv ) ) ) {
-            return array(
-                'error_code' => '-1',
-                'error_desc' => 'Per favore controlla che tutti i dati della carta siano valorizzati'
-            );
-        }
-
-        $log_params = clone $params;
-        if ( ! empty( $log_params->cardNumber ) ) {
-            // Hide card numbers.
-            $log_params->cardNumber = substr_replace( $log_params->cardNumber, '**********', 2, -4 );
-        }
-
-        if ( ! empty( $log_params->cvv ) ) {
-            $log_params->cvv = '***';
-        }
-
-        $this->Helper->log_add( '[S2S REQUEST]: ', $log_params );
-
-        /*
-            With "Tokenization" a merchant will be able to remotely store credit card data on the
-            Gestpay archives and receive back a Token in answer; the merchant will save the received
-            Token on in his system instead of the credit card data.
-            For the next purchases, the merchant will send to GestPay the Token instead of the credit
-            card number and Gestpay will use it to process the payment.
-            This operation provides the generation of a new Token during a transaction passing the
-            "requestToken" field, so they will obtain a Token in response.
-            The callRequestTokens2S method sends to GestPay all previously assigned data, if the flag
-            withAuth is set to Y then GestPay uses these data to make a transaction request without
-            affecting the account and return the result of the operation to WSs2s, otherwise only the
-            information about the card will be returned back.
-        */
-
-        // Do the request to retrieve the token
-        try {
-            $response = $client->callRequestTokenS2S( $params );
-        }
-        catch ( Exception $e ) {
-            $err = sprintf( $this->Gestpay->strings['soap_req_error'], $e->getMessage() );
-            $this->Helper->wc_add_error( $err );
-            $this->Helper->log_add( '[ERROR]: ' . $err );
-
-            return FALSE;
-        }
-
-        $this->Helper->log_add( '[S2S RESPONSE]: ', $response );
-
-        $xml_response = simplexml_load_string( $response->CallRequestTokenS2SResult->any );
-
-        /*
-            Check if the encryption call can be accepted it is possible to use the TransactionResult
-            method which will return the string "OK" if the check has been performed or the string "KO" if not.
-            In the fields TransactionErrorCode and  TransactionErrorDescription there are the detailed information in case of error.
-        */
-
-        if ( $xml_response->TransactionType == "REQUESTTOKEN" && $xml_response->TransactionResult == "OK" ) {
-            $token = (string) $xml_response->Token;
-            return array(
-                'token'  => $token,
-                'month'  => (int) $xml_response->TokenExpiryMonth,
-                'year'   => (int) $xml_response->TokenExpiryYear
-            );
-        }
-        else {
-            $this->Helper->log_add( '[ERROR]: [' . $xml_response->TransactionErrorCode . '] ' . $xml_response->TransactionErrorDescription );
-
-            return FALSE;
         }
 
     }

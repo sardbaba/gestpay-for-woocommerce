@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -24,6 +24,7 @@ class WC_Gateway_GestPay_Helper {
     public $plugin_logfile;
 
     function __construct() {
+
         $this->plugin_url            = trailingslashit( plugins_url( '', $plugin = GESTPAY_MAIN_FILE ) );
         $this->plugin_dir_path       = plugin_dir_path( GESTPAY_MAIN_FILE );
         $this->plugin_path           = dirname( plugin_basename( GESTPAY_MAIN_FILE ) );
@@ -37,6 +38,7 @@ class WC_Gateway_GestPay_Helper {
      * Localize, script and init the gateway
      */
     function init_gateway( &$this_gw ) {
+
         $this->gw = $this_gw;
 
         // Localize
@@ -56,97 +58,42 @@ class WC_Gateway_GestPay_Helper {
         $this->load_card_icons();
     }
 
-    /**
-     * Add card parameters from the card form.
-     *
-     * @param $params - Array of parameters on which append card informations
-     */
-    public function s2s_append_card_params( &$params ) {
+    function get_single_card_settings_array( $name ) {
 
-        $params->cardNumber    = $this->get_post( 'gestpay-cc-number' );
-        $params->expiryMonth   = $this->get_post( 'gestpay-cc-exp-month' );
-        $params->expiryYear    = $this->get_post( 'gestpay-cc-exp-year' );  // 2 digits
-
-        if ( $this->gw->is_cvv_required ) {
-            $params->cvv = $this->get_post( 'gestpay-cc-cvv' );
-        }
-    }
-
-    /**
-     * Maybe use buyerName from the cardholder info
-     *
-     * @param $params - Array of parameters on which change buyer informations
-     */
-    public function s2s_maybe_use_buyer( &$params ) {
-        $bn = $this->get_post( 'gestpay-cc-buyer-name' );
-        if ( $this->gw->param_buyer_name && !empty( $bn ) ) {
-            $params->buyerName = $bn;
-        }
+        return array(
+            'title' => '',
+            'type' => 'checkbox',
+            'label' => $name,
+            'default' => 'no'
+        );
     }
 
     function get_cards_settings() {
-        return array(
+
+        return apply_filters( 'gestpay_gateway_parameters_cards', array(
             'cards' => array(
                 'title' => $this->gw->strings['gateway_overwrite_cards'],
                 'type' => 'title',
                 'description' => $this->gw->strings['gateway_overwrite_cards_label'],
                 'class' => 'mmnomargin',
             ),
-            'card_visa' => array(
-                'title' => '',
-                'type' => 'checkbox',
-                'label' => 'Visa Electron',
-                'default' => 'no'
-            ),
-            'card_mastercard' => array(
-                'title' => '',
-                'type' => 'checkbox',
-                'label' => 'Mastercard',
-                'default' => 'no'
-            ),
-            'card_maestro' => array(
-                'title' => '',
-                'type' => 'checkbox',
-                'label' => 'Maestro',
-                'default' => 'no'
-            ),
-            'card_ae' => array(
-                'title' => '',
-                'type' => 'checkbox',
-                'label' => 'American Express',
-                'default' => 'no'
-            ),
-            'card_dci' => array(
-                'title' => '',
-                'type' => 'checkbox',
-                'label' => 'Diners Club International',
-                'default' => 'no'
-            ),
-            'card_paypal' => array(
-                'title' => '',
-                'type' => 'checkbox',
-                'label' => 'PayPal',
-                'default' => 'no'
-            ),
-            'card_jcb' => array(
-                'title' => '',
-                'type' => 'checkbox',
-                'label' => 'JCB Cards',
-                'default' => 'no'
-            ),
-            'card_postepay' => array(
-                'title' => '',
-                'type' => 'checkbox',
-                'label' => 'PostePay',
-                'default' => 'no'
-            ),
-        );
+            'card_visa'       => $this->get_single_card_settings_array( 'Visa Electron' ),
+            'card_mastercard' => $this->get_single_card_settings_array( 'Mastercard' ),
+            'card_maestro'    => $this->get_single_card_settings_array( 'Maestro' ),
+            'card_ae'         => $this->get_single_card_settings_array( 'American Express' ),
+            'card_dci'        => $this->get_single_card_settings_array( 'Diners Club International' ),
+            'card_paypal'     => $this->get_single_card_settings_array( 'PayPal' ),
+            'card_jcb'        => $this->get_single_card_settings_array( 'JCB Cards' ),
+            'card_postepay'   => $this->get_single_card_settings_array( 'PostePay' ),
+            'card_mybank'     => $this->get_single_card_settings_array( 'MyBank' ),
+        ));
     }
 
     /**
      * Check if the order was paid with Gestpay.
      */
     function is_gestpaid( $order_id ) {
+
         if ( 'wc_gateway_gestpay' == get_post_meta( $order_id, '_payment_method', TRUE ) ) {
             return TRUE;
         }
@@ -158,6 +105,7 @@ class WC_Gateway_GestPay_Helper {
      * Load card icons.
      */
     function load_card_icons() {
+
         $cards = array();
         $card_path = $this->plugin_url . '/images/cards/';
         $gws = $this->gw->settings;
@@ -170,6 +118,7 @@ class WC_Gateway_GestPay_Helper {
         if (isset($gws['card_paypal'])     && $gws['card_paypal'] == "yes")     $cards[] = $card_path . 'card_paypal.jpg';
         if (isset($gws['card_jcb'])        && $gws['card_jcb'] == "yes")        $cards[] = $card_path . 'card_jcb.jpg';
         if (isset($gws['card_postepay'])   && $gws['card_postepay'] == "yes")   $cards[] = $card_path . 'card_postepay.jpg';
+        if (isset($gws['card_mybank'])     && $gws['card_mybank'] == "yes")     $cards[] = $card_path . 'card_mybank.jpg';
 
         if ( empty( $cards ) ) return;
 
@@ -180,20 +129,43 @@ class WC_Gateway_GestPay_Helper {
             $cards_string .= $card . ( end( $cards ) == $card ? '' : '" /><img src="' );
         }
 
-        $this->gw->icon = $cards_string;
+        $this->gw->icon = apply_filters( 'gestpay_gateway_cards_images', $cards_string );
     }
 
     function get_plugin_logfile_name() {
+
         return ( defined( 'WC_LOG_DIR' ) ? WC_LOG_DIR : '' ) . $this->plugin_slug."-".sanitize_file_name( wp_hash( $this->plugin_slug ) ).'.log';
     }
 
     function log_add( $message, $arr = array() ) {
+
         if ( $this->gw->debug ) {
             if ( ! isset( $this->log ) || empty( $this->log ) ) {
                 $this->log = new WC_Logger();
             }
 
-            $message.= $this->var_export( $arr );
+            if ( ! empty( $arr ) ) {
+
+                $cloned_arr = clone $arr; // Required to prevent parameters modification.
+
+                if ( ! empty( $cloned_arr->cardNumber ) ) {
+                    $cloned_arr->cardNumber = substr_replace( $cloned_arr->cardNumber, '**********', 2, -4 );
+                }
+
+                if ( ! empty( $cloned_arr->cvv ) ) {
+                    $cloned_arr->cvv = '***';
+                }
+
+                if ( ! empty( $cloned_arr->PARes ) ) {
+                    $cloned_arr->PARes = substr( $cloned_arr->PARes, 0, 16 ) . '...';
+                }
+
+                if ( ! empty( $cloned_arr->apikey ) ) {
+                    $cloned_arr->apikey = substr( $cloned_arr->apikey, 0, 16 ) . '...';
+                }
+
+                $message.= $this->var_export( $cloned_arr );
+            }
 
             $this->log->add( $this->plugin_slug, $message );
         }
@@ -210,6 +182,7 @@ class WC_Gateway_GestPay_Helper {
     * @return mixed
     */
    private function var_export( $expression ) {
+
         if ( empty( $expression ) ) {
             return '';
         }
@@ -231,6 +204,7 @@ class WC_Gateway_GestPay_Helper {
      * Clean and validate order's prefix
      */
     function get_order_prefix( &$settings ) {
+
         if ( isset( $settings['order_prefix'] ) && ! empty( $settings['order_prefix'] ) ) {
             // allows only alphanumeric charactes
             $prefix = preg_replace( "/[^A-Za-z0-9]/", '', $settings['order_prefix'] );
@@ -253,6 +227,7 @@ class WC_Gateway_GestPay_Helper {
      * @return string
      */
     function get_custominfo( $param_custominfo ) {
+
         $custom_info = array();
 
         // Split the textarea content by each row
@@ -278,6 +253,7 @@ class WC_Gateway_GestPay_Helper {
      * @return string
      */
     function get_clean_param( $in_string ) {
+
         return str_replace( array(
             "&"," ","§","(",")","*","<",">",",",";",":","*P1*","/","/*","[","]","?","%"
         ), "", $in_string );
@@ -290,6 +266,7 @@ class WC_Gateway_GestPay_Helper {
      * @return int
      */
     function get_language() {
+
         switch ( $this->get_current_language_2dgtlwr() ) {
             case 'it' :
                 return 1;
@@ -305,6 +282,7 @@ class WC_Gateway_GestPay_Helper {
     }
 
     function get_gestpay_currencies() {
+
         return include 'gestpay-currencies.php';
     }
 
@@ -312,6 +290,7 @@ class WC_Gateway_GestPay_Helper {
      * Mapper for the Gestpay currency codes.
      */
     function get_order_currency( $order ) {
+
         $gestpay_allowed_currency_codes = $this->get_gestpay_currencies();
 
         $the_currency = $this->get_currency( $order );
@@ -331,11 +310,8 @@ class WC_Gateway_GestPay_Helper {
         if ( method_exists( $order, 'get_currency' ) ) { // wc>=3
             $the_currency = $order->get_currency();
         }
-        elseif ( method_exists( $order, 'get_order_currency' ) ) { // wc<3
-            $the_currency = $order->get_order_currency();
-        }
         else {
-            $the_currency = get_post_meta( $this->order_get( $order, 'id' ), '_order_currency', true );
+            $the_currency = get_post_meta( $order->get_id(), '_order_currency', true );
         }
 
         if ( empty( $the_currency ) ) {
@@ -345,10 +321,79 @@ class WC_Gateway_GestPay_Helper {
         return $the_currency;
     }
 
+
     /**
-     * Get the right value based on currency. Some of them does not allow to use decimals.
+     * Fix orders with trial period and requests for card change.
+     * We have to add the minimum for the currency (1 cent for EUR) so that
+     * the order can be paid. This amount will be refunded after receiving the token.
      */
-    function get_order_amount( $override_amount, $uic_code, $order, $order_id ) {
+    function maybe_add_0_order_amount_fix( $order, $amount, $order_currency ) {
+
+        if ( ! $this->is_subscription_order( $order ) ) {
+            return;
+        }
+
+        // Add the amount only if it wasn't already added.
+        // If a payment fails, the cent is assigned anyway to the order, so we must not add it again.
+        $maybe_amount_fix = get_post_meta( $order->get_id(), GESTPAY_ORDER_META_AMOUNT, TRUE );
+        if ( empty( $maybe_amount_fix ) ) {
+            $fix_message = "Addebito di ".$amount." ".$order_currency." per evitare errore per importo nullo su Gestpay. Si proverà a stornare tale importo automaticamente.";
+            $this->log_add( $fix_message );
+            $order->add_order_note( $fix_message );
+            update_post_meta( $order->get_id(), GESTPAY_ORDER_META_AMOUNT, $amount );
+        }
+    }
+
+    /**
+     * Check if the given order must be refunded for the "0 order amount" fix.
+     */
+    function maybe_refund_0_order_amount_fix( $order ) {
+
+        if ( ! $this->is_subscription_order( $order ) ) {
+            return;
+        }
+
+        $order_id = $order->get_id();
+
+        // Maybe refund the amount used on the first trial order.
+        $gestpay_fix_amount_zero = get_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT, TRUE );
+        if ( $gestpay_fix_amount_zero ) {
+            $refund_res = $this->gw->Order_Actions->refund( $order_id, $gestpay_fix_amount_zero, 'Write-Off' );
+
+            if ( ! $refund_res ) {
+                // If the order can't be refunded, probabily the merchant is using MOTO with
+                // separation, so we can try to settle and then refund.
+                $settle_res = $this->gw->Order_Actions->settle( $order_id, $gestpay_fix_amount_zero );
+                if ( $settle_res === TRUE ) {
+                    $refund_res = $this->gw->Order_Actions->refund( $order_id, $gestpay_fix_amount_zero, 'Write-Off' );
+                }
+            }
+
+            // Remove order meta so it will not be processed anymore (even if refund is failed).
+            delete_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT );
+
+            $add_order_error = !function_exists( 'wcs_is_subscription' ) || !wcs_is_subscription( $order );
+
+            if ( $refund_res !== TRUE ) {
+                $refund_err = "ERRORE: Rimborso di 1 centesimo fallito ";
+                if ( $add_order_error )
+                    $order->add_order_note( $refund_err );
+                $this->log_add( $refund_err . "per Ordine #" . $order_id );
+            }
+            else {
+                if ( $add_order_error )
+                    $order->update_status( 'refunded' );
+                $this->log_add( "Rimborso di 1 centesimo effettuato correttamente per Ordine #" . $order_id );
+            }
+
+        }
+    }
+
+    /**
+     * Get the right value based on currency; some of them does not allow to use decimals.
+     * If the order is a payment change $override_amount will be 0 (@see s2s_payment()).
+     */
+    function get_order_amount( $override_amount, $uic_code, $order ) {
 
         $order_currency = $this->get_currency( $order );
         $gestpay_currencies = $this->get_gestpay_currencies();
@@ -359,31 +404,17 @@ class WC_Gateway_GestPay_Helper {
 
         $gestpay_currency = $gestpay_currencies[$order_currency];
 
-        $this->log_add( ">> Using currency " . var_export( $gestpay_currency, true ) );
+        if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order ) ) {
+            $amount = 0;
+        }
+        else {
+            $amount = $override_amount !== FALSE ? $override_amount : $order->get_total();
+        }
 
-        $amount = $override_amount !== FALSE ? $override_amount : $this->order_get( $order, 'total' );
-
-        if ( empty( $amount ) ) {
-            /*
-            NOTES
-
-            This is a fix for the trial period: orders with 0€ can't be processed.
-            We have to add a 1 cent payment which will be subtracted at the next payment.
-            This amout will be refunded on the first recurring payment.
-            */
+        if ( empty( (float)$amount ) ) {
+            // Fix order amount is available for WC Subscriptions
             $amount = $gestpay_currency['min'];
-
-            // Add the amount only if it wasn't already added.
-            // If a payment fails, the cent is assigned anyway to the order, so we must not add it again.
-            $maybe_amount_fix = get_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT, TRUE );
-            if ( empty( $maybe_amount_fix ) ) {
-                $fix_message = "Addebito di %s %s per evitare errore per importo nullo su Gestpay. Tale importo verrà stornato automaticamente al primo pagamento ricorrente - Ordine n. %s";
-                $this->log_add( sprintf( $fix_message, $amount, $order_currency, $order_id ) );
-
-                update_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT, $amount );
-
-                $order->add_order_note( $fix_message );
-            }
+            $this->maybe_add_0_order_amount_fix( $order, $amount, $order_currency );
         }
 
         $amount = number_format( (float)$amount, 2, '.', '' );
@@ -397,17 +428,102 @@ class WC_Gateway_GestPay_Helper {
     }
 
     /**
+     * Retrieve the parent order_id
+     */
+    function get_parent_order_id( $order ) {
+
+        if ( empty( $order ) ) {
+            return FALSE;
+        }
+
+        $order_id = is_a( $order, 'WC_Order' ) ? $order->get_id() : $order;
+
+        if ( $this->is_subscriptions_active() ) {
+            if ( wcs_order_contains_renewal( $order_id ) ) {
+                $order_id = WC_Subscriptions_Renewal_Order::get_parent_order_id( $order_id );
+            }
+            elseif ( wcs_is_subscription( $order ) ) {
+                $subscription = wcs_get_subscription( $order );
+                $order_id = $subscription->get_parent_id();
+            }
+        }
+
+        return $order_id;
+    }
+
+    /**
+     * Store the token to the order meta (of the parent order if renewal).
+     * The given token can be an xml object or an array
+     */
+    function set_order_token( $order, $tokenshiro ) {
+
+        $order_id = $this->get_parent_order_id( $order );
+        if ( empty( $order_id ) ) {
+            return FALSE;
+        }
+
+        if ( empty( $tokenshiro ) ) {
+            $this->log_add( "Token is empty for order: " . $order_id );
+            return FALSE;
+        }
+
+        if ( is_object( $tokenshiro ) && ! empty( $tokenshiro->TOKEN ) ) {
+            $token = array(
+                'token' => (string) $tokenshiro->TOKEN,
+                'month' => !empty( $tokenshiro->TokenExpiryMonth ) ? (int) $tokenshiro->TokenExpiryMonth : 1,
+                'year'  => !empty( $tokenshiro->TokenExpiryYear ) ? (int) $tokenshiro->TokenExpiryYear : 2109
+            );
+        }
+        else if ( ! empty( $tokenshiro['token'] ) ) { // already an array
+            $token = $tokenshiro;
+        }
+        else {
+            $this->log_add( "Token is empty for order: " . $order_id );
+            return FALSE;
+        }
+
+        $this->log_add( "Set token ". $token['token'] ." for order: " . $order_id );
+
+        return update_post_meta( $order_id, GESTPAY_META_TOKEN, $token );
+    }
+
+    /**
+     * Get the token from the order meta (from the parent order if renewal and from the main if subscription).
+     * If it was a token saved before version 201910xx it will be a single string.
+     * All future tokens will be saved alongside the expiry date as array.
+     */
+    function get_order_token( $order, $just_token = true ) {
+
+        $order_id = $this->get_parent_order_id( $order );
+        if ( empty( $order_id ) ) {
+            return FALSE;
+        }
+
+        $token = get_post_meta( $order_id, GESTPAY_META_TOKEN, TRUE );
+        if ( empty( $token ) ) {
+            return FALSE;
+        }
+
+        if ( is_array( $token ) && $just_token ) {
+            return !empty( $token['token'] ) ? $token['token'] : FALSE;
+        }
+
+        return $token;
+    }
+
+    /**
      * If the merchant is using a plugin which alters the original ID of the order
      * we need to extract it, so that can be used in normal functions, like update_post_meta
      * or wc_get_order.
      */
-    function get_order_id_by_id( $order_id ) {
+    function get_real_order_id( $order_id ) {
+
         if ( class_exists( 'WC_Seq_Order_Number_Pro' ) ) {
             $wc_son = new WC_Seq_Order_Number_Pro();
             $order_id = $wc_son->find_order_by_order_number( $order_id );
         }
 
-        return $order_id;
+        return apply_filters( 'gestpay_revert_order_id', $order_id );
     }
 
     /**
@@ -415,6 +531,7 @@ class WC_Gateway_GestPay_Helper {
      * we need to retrieve it, so that can be used to save the correct trasaction ID.
      */
     function get_transaction_id( $order_id ) {
+
         if ( class_exists( 'WC_Seq_Order_Number_Pro' ) ) {
             $wcsonp_id = get_post_meta( $order_id, '_order_number_formatted', true );
 
@@ -423,64 +540,23 @@ class WC_Gateway_GestPay_Helper {
             }
         }
 
-        return $order_id;
+        return apply_filters( 'gestpay_alter_order_id', $order_id );
     }
-
-    /**
-     * Backward compatibility function to get a property of the order.
-     * On WC 2.x there was a direct access, while on 3.x it uses the getter.
-     */
-    function order_get( $order, $get ) {
-        if ( version_compare( WC_VERSION, '2.6.15', '<' ) ) {
-            switch ( $get ) {
-                case 'total':
-                $get = 'order_total';
-                break;
-            }
-            return $order->{$get};
-        }
-
-        $get = 'get_' . $get;
-        return $order->$get();
-    }
-
-    /**
-     * Returns the WooCommerce version number, backwards compatible to WC 1.x
-     *
-     * @return null|string
-     */
-    function get_wc_version() {
-        if ( defined( 'WC_VERSION' ) && WC_VERSION ) return WC_VERSION;
-        if ( defined( 'WOOCOMMERCE_VERSION' ) && WOOCOMMERCE_VERSION ) return WOOCOMMERCE_VERSION;
-        return null;
-    }
-
-    function is_wc_gte( $v ) {
-        return version_compare( $this->get_wc_version(), $v, '>=' );
-    }
-
-    /* short checks */
-    function is_wc_gte_26() { return $this->is_wc_gte( '2.6.0' ); }
-    function is_wc_gte_27() { return $this->is_wc_gte( '2.7.0' ); }
-    function is_wc_gte_30() { return $this->is_wc_gte( '3.0.0' ); }
 
     /**
      * Backwards compatible get URL
      */
     function wc_url( $path, $order ) {
+
         switch ( $path ) {
             case 'view_order':
                 return $order->get_view_order_url();
 
             case 'order_received':
-                return add_query_arg( 'utm_nooverride', '1',
-                    $this->gw->get_return_url( $order )
-                );
+                return add_query_arg( 'utm_nooverride', '1', $this->gw->get_return_url( $order ) );
 
             case 'order_failed':
-                return add_query_arg( 'utm_nooverride', '1',
-                    wc_get_checkout_url()
-                );
+                return add_query_arg( 'utm_nooverride', '1', wc_get_checkout_url() );
 
             case 'pay':
                 return $order->get_checkout_payment_url( true );
@@ -490,10 +566,12 @@ class WC_Gateway_GestPay_Helper {
     }
 
     function wc_empty_cart() {
+
         WC()->cart->empty_cart();
     }
 
     function handle_transaction_details( $order, $order_id, $xml ) {
+
         $txn_details = array(
             'bt_id' => '',
             'auth_code' => '',
@@ -530,20 +608,23 @@ class WC_Gateway_GestPay_Helper {
      * Update order status, add admin order note and empty the cart
      */
     function wc_order_completed( $order, $message, $tx_id = '' ) {
+
         $order->payment_complete( $tx_id );
         $order->add_order_note( $message );
         $this->wc_empty_cart();
         $this->log_add( 'ORDER COMPLETED: ' . $message );
 
+        $this->maybe_refund_0_order_amount_fix( $order );
+
         // FIX: under some circustances emails seems to not be fired. This force them to be sent.
-        if ( defined( 'WC_GATEWAY_FORCE_SEND_EMAIL' ) && WC_GATEWAY_FORCE_SEND_EMAIL ) {
+        if ( defined( 'WC_GATEWAY_GESTPAY_FORCE_SEND_EMAIL' ) && WC_GATEWAY_GESTPAY_FORCE_SEND_EMAIL ) {
             $mailer = WC()->mailer();
             $mails = $mailer->get_emails();
             if ( ! empty( $mails ) ) {
                 foreach ( $mails as $mail ) {
                     if ( ( $order->has_status( 'completed' ) && ($mail->id == 'customer_completed_order' || $mail->id == 'new_order') )
                         || ( $order->has_status( 'processing' ) && ($mail->id == 'customer_processing_order' || $mail->id == 'new_order') ) ) {
-                        $mail->trigger( $this->order_get( $order, 'id' ) );
+                        $mail->trigger( $order->get_id() );
                   }
                 }
             }
@@ -555,6 +636,7 @@ class WC_Gateway_GestPay_Helper {
      * Create the gateway form, loading the autosubmit javascript.
      */
     function get_gw_form( $action_url, $input_params, $order ) {
+
         $assets_path = str_replace( array( 'http:', 'https:' ), '', WC()->plugin_url() ) . '/assets/';
         $imgloader = $assets_path . 'images/ajax-loader@2x.gif';
         $js = <<<JS
@@ -602,6 +684,7 @@ HTML;
      * Backwards compatible add error
      */
     function wc_add_error( $error ) {
+
         if ( function_exists( 'wc_add_notice' ) ) {
             wc_add_notice( $error, 'error' );
         }
@@ -613,6 +696,7 @@ HTML;
      * @return bool true if one of them is active, false otherwise.
      */
     function is_qtranslate_enabled() {
+
         return ( defined('QTX_VERSION') ||
             in_array( 'qtranslate/qtranslate.php', (array) get_option( 'active_plugins', array() ) ) ||
                 in_array( 'mqtranslate/mqtranslate.php', (array) get_option( 'active_plugins', array() ) ) );
@@ -624,7 +708,28 @@ HTML;
      * @return bool true if WCS is active, false otherwise.
      */
     function is_subscriptions_active() {
+
         return in_array( 'woocommerce-subscriptions/woocommerce-subscriptions.php', (array) get_option( 'active_plugins', array() ) );
+    }
+
+    /**
+     * Checks if the cart contains a Subscriptions.
+     *
+     * @return bool
+     */
+    function is_a_subscription() {
+
+        return class_exists( 'WC_Subscriptions_Cart' ) && WC_Subscriptions_Cart::cart_contains_subscription();
+    }
+
+    /**
+     * Checks if WC Subscriptions is active and the order contains or is a subscription.
+     *
+     * @return bool
+     */
+    function is_subscription_order( $order ) {
+
+        return $this->is_subscriptions_active() && ( wcs_order_contains_subscription( $order, array( 'order_type' => 'any' ) ) || wcs_is_subscription( $order ) );
     }
 
     /**
@@ -634,6 +739,7 @@ HTML;
      * @return string
      */
     function get_current_language() {
+
         if ( $this->is_qtranslate_enabled() ) {
             if ( function_exists( 'qtranxf_getLanguage' ) ) {
                 return qtranxf_getLanguage(); // -- qTranslate X
@@ -655,6 +761,7 @@ HTML;
      * @return string
      */
     function get_current_language_2dgtlwr() {
+
         return substr( strtolower( $this->get_current_language() ), 0, 2 );
     }
 
@@ -662,6 +769,7 @@ HTML;
      * Generate the option list
      */
     function get_page_list_as_option() {
+
         $opt_pages = array( 0 => " -- Select -- " );
         foreach ( get_pages() as $page ) {
             $opt_pages[ $page->ID ] = __( $page->post_title );
@@ -674,6 +782,7 @@ HTML;
      * Show an error message.
      */
     function show_error( $msg ) {
+
         echo '<div id="woocommerce_errors" class="error fade"><p>ERRORE: ' . $msg . '</p></div>';
     }
 
@@ -681,6 +790,7 @@ HTML;
      * Create a SOAP client using the specified URL
      */
     function get_soap_client( $url ) {
+
         try {
             $soapClientOptions = array(
                 'user_agent' => 'Wordpress/GestpayForWoocommerce',
@@ -707,6 +817,7 @@ HTML;
      * @return false if SOAP is not enabled.
      */
     function check_fatal_soap( $plugin_name ) {
+
         if ( ! extension_loaded( 'soap' ) ) {
             $this->show_error( 'Per poter utilizzare <strong>' . $plugin_name . '</strong> la libreria SOAP client di PHP deve essere abilitata!' );
             return false;
@@ -721,19 +832,19 @@ HTML;
      * @return false if suhosin is not well configured.
      */
     function check_fatal_suhosin( $plugin_name, $print = TRUE ) {
-        if ( is_numeric( @ini_get( 'suhosin.get.max_value_length' ) ) && ( @ini_get( 'suhosin.get.max_value_length' ) < 1024 ) ) {
 
+        if ( is_numeric( @ini_get( 'suhosin.get.max_value_length' ) ) && ( @ini_get( 'suhosin.get.max_value_length' ) < 1024 ) ) {
             if ( $print ) {
                 $this->show_error( $this->get_suhosin_error_msg( $plugin_name ) );
             }
 
             return false;
         }
-
         return true;
     }
 
     function get_suhosin_error_msg( $plugin_name ) {
+
         $err_suhosin = 'Sul tuo server è presente <a href="http://www.hardened-php.net/suhosin/index.html" target="_blank">PHP Suhosin</a>.<br>Devi aumentare il valore di <a href="http://suhosin.org/stories/configuration.html#suhosin-get-max-value-length" target="_blank">suhosin.get.max_value_length</a> almeno a 1024, perché <strong>' . $plugin_name . '</strong> utilizza delle query string molto lunghe.<br>';
         $err_suhosin.= '<strong>' . $plugin_name . '</strong> non potrà essere utilizzato finché non si aumenta tale valore!';
 
@@ -744,14 +855,9 @@ HTML;
      * Safely get and trim data from $_POST
      */
     function get_post( $key ) {
+
         return isset( $_POST[$key] ) ? trim( $_POST[$key] ) : '';
     }
 }
 
 endif; // ! class_exists( 'WC_Gateway_GestPay_Helper' )
-
-
-// Backward compatibility to get the order id outside without the helper.
-function wc_gp_get_order_id( $order ) {
-    return version_compare( WC_VERSION, '2.6.15', '<' ) ? $order->id : $order->get_id();
-}

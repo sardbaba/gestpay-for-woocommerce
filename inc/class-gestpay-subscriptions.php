@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -27,7 +27,7 @@ class Gestpay_Subscriptions {
         $this->Cards = new Gestpay_Cards( $gestpay );
         $this->saved_cards = $this->Cards->get_cards();
 
-        if ( $this->Helper->is_subscriptions_active() && ! $this->Gestpay->is_3ds_enabled ) {
+        if ( $this->Helper->is_subscriptions_active() ) {
             /*
                 NOTES
 
@@ -40,12 +40,100 @@ class Gestpay_Subscriptions {
 
             // display the current payment method used for a subscription in the "My Subscriptions" table
             add_filter( 'woocommerce_my_subscriptions_payment_method', array( $this, 'maybe_render_subscription_payment_method' ), 10, 2 );
+
+            // action when cancelling a subscription
+            // add_action( 'woocommerce_subscription_cancelled_wc_gateway_gestpay', array( $this, 'cancelled_subscription' ) );
+            // add_action( 'woocommerce_subscription_failing_payment_method_updated_wc_gateway_gestpay', array( $this, 'update_failing_payment_method' ), 10, 2 );
         }
-
-        add_filter( 'woocommerce_api_order_response', array( $this, 'add_token_data' ), 10, 2 );
-
     }
 
+    /**
+     * Add card parameters from the card form.
+     *
+     * @param $params - Array of parameters on which append card informations
+     */
+    public function append_card_params( &$params ) {
+
+        $params->cardNumber = $this->Helper->get_post( 'gestpay-cc-number' );
+        $params->expiryMonth = $this->Helper->get_post( 'gestpay-cc-exp-month' );
+        $params->expiryYear = $this->Helper->get_post( 'gestpay-cc-exp-year' );  // 2 digits
+
+        if ( $this->Gestpay->is_cvv_required ) {
+            $params->cvv = $this->Helper->get_post( 'gestpay-cc-cvv' );
+        }
+    }
+
+    /**
+     * Maybe use buyerName from the cardholder info
+     *
+     * @param $params - Array of parameters on which change buyer informations
+     */
+    public function maybe_use_buyer( &$params ) {
+
+        if ( $this->Gestpay->param_buyer_name ) {
+            $bn = $this->Helper->get_post( 'gestpay-cc-buyer-name' );
+            if ( !empty( $bn ) ) {
+                $params->buyerName = $bn;
+            }
+        }
+    }
+
+    /**
+     * Maybe add a token request
+     *
+     * @param $params - Array of parameters
+     */
+    public function maybe_request_token( &$params, $order_id ) {
+
+        if ( ! $this->Gestpay->save_token || empty( $order_id ) ) {
+            return;
+        }
+
+        if ( wcs_is_subscription( $order_id ) ) {
+            $subscription = wcs_get_subscription( $order_id );
+            $order_id = $subscription->get_parent_id();
+            $token = false;
+        }
+        else {
+            $token = $this->Helper->get_order_token( $order_id );
+            if ( ! empty( $token ) ) {
+                // This is the case of the first payment made with a token already saved, so we don't need to request it again.
+                return;
+            }
+        }
+
+        $params->requestToken = "MASKEDPAN";
+        $params->withAuth = $this->Gestpay->token_with_auth;
+    }
+
+    /**
+     * Maybe save the card's token
+     *
+     * @param $xml_response - Array of response informations
+     */
+    public function maybe_save_token( $xml_response, $order_id ) {
+
+        if ( ! $this->Gestpay->save_token ) {
+            $this->Helper->log_add( '[OnSite] TOKEN storage is disabled.' );
+            return FALSE;
+        }
+
+        $response = array(
+            'token' => (string) $xml_response->TOKEN,
+            'month' => (int) $xml_response->TokenExpiryMonth,
+            'year'  => (int) $xml_response->TokenExpiryYear
+        );
+
+        if ( empty( $response['token'] ) ) {
+            $this->Helper->log_add( '[OnSite] Token was not provided in the xml_response.' );
+            return FALSE;
+        }
+
+        $this->Helper->set_order_token( $order_id, $response );
+
+        // Maybe store also the card to the users cards
+        $this->Cards->save_card( $response );
+    }
 
     /**
      * Do the payment through S2S
@@ -53,9 +141,11 @@ class Gestpay_Subscriptions {
     public function s2s_payment( $order, $args = array() ) {
 
         $transaction_id = '';
-        $order_id = $this->Helper->order_get( $order, 'id' );
+        $order_id = $order->get_id();
 
-        if ( ! $client = $this->Helper->get_soap_client( $this->Gestpay->ws_S2S_url ) ) return FALSE;
+        if ( ! $client = $this->Helper->get_soap_client( $this->Gestpay->ws_S2S_url ) ) {
+            return FALSE;
+        }
 
          // Maybe overwrite amount (for subscription)
         $override_amount = FALSE;
@@ -66,24 +156,36 @@ class Gestpay_Subscriptions {
         // Set required parameters and add the Token to them
         $params = $this->Gestpay->get_base_params( $order, $override_amount, FALSE );
 
+        // Maybe use another account without 3DS to process recurring payments
+        // *** @deprecated - with 3DS 2.0 this is no longer useful, but is kept for compatibility ***
+        if ( ! empty( $args['shopLoginRec'] ) ) {
+            $params->shopLogin = $args['shopLoginRec'];
+
+            if ( ! empty( $args['apikeyRec'] ) ) {
+                $params->apikey = $args['apikeyRec'];
+            }
+        }
+
         if ( ! empty( $args['token'] ) ) {
             // S2S Payment Phase 1 with Token
             $params->tokenValue = $args['token'];
 
             // Maybe use buyerName from the card info
-            $this->Helper->s2s_maybe_use_buyer( $params );
-        }
-        elseif ( ! empty( $args['pares'] ) ) {
-            // S2S Payment Phase 3
-            $params->transKey = get_post_meta( $order_id, GESTPAY_ORDER_META_TRANS_KEY, TRUE );
-            $params->PARes = $args['pares'];
+            $this->maybe_use_buyer( $params );
         }
         else {
-            // S2S Payment Phase 1 without Token
-            $this->Helper->s2s_append_card_params( $params );
+            if ( ! empty( $args['pares'] ) ) {
+                // S2S Payment Phase 3
+                $params->transKey = get_post_meta( $order_id, GESTPAY_ORDER_META_TRANS_KEY, TRUE );
+                $params->PARes = $args['pares'];
+            }
+            else {
+                // S2S Payment Phase 1 without Token
+                $this->append_card_params( $params );
+                $this->maybe_use_buyer( $params );
+            }
 
-            // Maybe use buyerName from the card info
-            $this->Helper->s2s_maybe_use_buyer( $params );
+            $this->maybe_request_token( $params, $order_id );
         }
 
         // Maybe overwrite shopTransactionId (for subscription)
@@ -91,14 +193,11 @@ class Gestpay_Subscriptions {
             $params->shopTransactionId = $this->Helper->get_transaction_id( $args['shopTransactionId'] );
         }
 
-        $log_params = clone $params;
-        if ( ! empty( $log_params->cardNumber ) ) {
-            $log_params->cardNumber = substr_replace( $log_params->cardNumber, '**********', 2, -4 );
-        }
-        $this->Helper->log_add( '[s2s_payment]: Parameters:', $log_params );
-
-        // Do the request to retrieve the token
+        // Do the request to retrieve the pay
         try {
+            Gestpay_3DS2::add_3ds2_params( $params, $order_id, 'WsS2S', $this->is_scheduled_payment );
+            $this->Helper->log_add( '[s2s_payment]: Parameters:', $params );
+
             $response = $client->callPagamS2S( $params );
         }
         catch ( Exception $e ) {
@@ -115,9 +214,11 @@ class Gestpay_Subscriptions {
 
         $xml_response = simplexml_load_string( $response->callPagamS2SResult->any );
 
+        Gestpay_3DS2::maybe_set_3DS2_metas( $xml_response, $order_id );
+
         if ( $xml_response->TransactionType == "PAGAM" && $xml_response->TransactionResult == "OK" ) {
 
-            // --- Transactions made with non 3D-Secure cards
+            // --- Transactions made with non 3DS account (Phase 1) or with 3DS account (Phase 3) after pares confirmation
             $txn = $this->Helper->handle_transaction_details( $order, $order_id, $xml_response );
 
             if ( ! $this->is_scheduled_payment ) {
@@ -125,6 +226,9 @@ class Gestpay_Subscriptions {
                 $msg = sprintf( $this->Gestpay->strings['transaction_ok'], $order_id );
 
                 $this->Helper->wc_order_completed( $order, $msg, $txn );
+
+                // This will not save the token here if using 3DS account
+                $this->maybe_save_token( $xml_response, $order_id );
 
                 add_action( 'the_content', array( &$this, 'show_message' ) );
             }
@@ -136,11 +240,9 @@ class Gestpay_Subscriptions {
         elseif ( $xml_response->TransactionType == "PAGAM" && $xml_response->TransactionResult == "KO" ) {
 
             // --- Transactions made with 3D-Secure cards
-
             if ( $xml_response->ErrorCode == '8006' ) {
 
                 // -- Phase I: authorization request OK
-
                 if ( ! empty( $xml_response->TransactionKey ) ) {
                     // Store the Transaction Key, which will be used in the Phase 3
                     update_post_meta( $order_id, GESTPAY_ORDER_META_TRANS_KEY, (string)$xml_response->TransactionKey );
@@ -149,7 +251,10 @@ class Gestpay_Subscriptions {
                     $this->Helper->log_add( '[ATTENZIONE]: Impossibile ricevere la TransactionKey in fase di autorizzazione. Verificare che il parametro sia abilitato nella risposta' );
                 }
 
-                // -- Send to Phase II
+                // This will save the token here if using 3DS account
+                $this->maybe_save_token( $xml_response, $order_id );
+
+                // -- Send to Phase 2
                 return array(
                     'VbVRisp' => (string)$xml_response->VbV->VbVRisp,
                 );
@@ -157,10 +262,13 @@ class Gestpay_Subscriptions {
             else {
 
                 // -- Error
-
                 $err = sprintf( $this->Gestpay->strings['payment_error'], $xml_response->ErrorCode, $xml_response->ErrorDescription );
                 if ( ! $this->is_scheduled_payment ) {
                     $this->Helper->wc_add_error( $err );
+
+                    // We are here because something get wrong in the first payment.
+                    // If we saved the token let's cancel it.
+                    delete_post_meta( $order_id, GESTPAY_META_TOKEN );
                 }
 
                 $this->Helper->log_add( '[ERROR]: ' . $err );
@@ -172,42 +280,9 @@ class Gestpay_Subscriptions {
                     'error_desc' => $xml_response->ErrorDescription
                 );
             }
-
         }
-
     }
 
-    /**
-     * Get the ID of the parent order for a subscription renewal order.
-     *
-     * @param WC_Order The WC_Order object
-     *
-     * @return int
-     */
-    private function get_renewal_parent_order_id( $renewal_order ) {
-
-        if ( ! is_object( $renewal_order ) ) {
-            $renewal_order = new WC_Order( $renewal_order );
-        }
-
-        $subscriptions = wcs_get_subscriptions_for_renewal_order( $renewal_order );
-        $subscription  = array_pop( $subscriptions );
-
-        if ( version_compare( WC_VERSION, '2.6.15', '<' ) ) {
-            $parent_order = $subscription->order;
-        }
-        else {
-            $parent_order = $subscription->get_parent();
-        }
-
-        if ( false === $parent_order ) { // There is no original order
-            throw new Exception( 'Gestpay S2S Exception: Can\'t find the main order.' );
-        }
-        else {
-            return wc_gp_get_order_id( $parent_order );
-        }
-
-    }
 
     /**
      * Process subscription renewal
@@ -229,7 +304,12 @@ class Gestpay_Subscriptions {
      */
     public function process_subscription_renewal_payment( $amount_to_charge, $renewal_order ) {
 
-        $renewal_order_id = $this->Helper->order_get( $renewal_order, 'id' );
+        // WARNING! Be sure the class invoker is the same payment gateway set on the renewal order!
+        if ( $renewal_order->get_payment_method() != $this->Gestpay->id ) {
+            return FALSE;
+        }
+
+        $renewal_order_id = $renewal_order->get_id();
 
         // Be sure to process a renewal order.
         if ( ! wcs_order_contains_renewal( $renewal_order_id ) ) {
@@ -238,8 +318,7 @@ class Gestpay_Subscriptions {
         }
 
         // NEVER process an already paid order!
-        $order = new WC_Order( $renewal_order_id );
-        if ( ! ( $order->needs_payment() || $order->has_status( array( 'on-hold', 'failed', 'cancelled' ) ) ) ) {
+        if ( ! ( $renewal_order->needs_payment() || $renewal_order->has_status( array( 'on-hold', 'failed', 'cancelled' ) ) ) ) {
             return FALSE;
         }
 
@@ -248,58 +327,46 @@ class Gestpay_Subscriptions {
             $this->renewal_payment_failure( $renewal_order, $err );
         }
 
-        $parent_order_id = $this->get_renewal_parent_order_id( $renewal_order );
+        if ( wcs_order_contains_renewal( $renewal_order_id ) ) {
+            $parent_order_id = WC_Subscriptions_Renewal_Order::get_parent_order_id( $renewal_order_id );
+        }
 
-        $token = get_post_meta( $parent_order_id, GESTPAY_META_TOKEN, TRUE );
+        if ( empty( $parent_order_id ) ) {
+            $err = 'Failed to retrieve parent order ID while processing a subscription renewal payment.';
+            $this->renewal_payment_failure( $renewal_order, $err );
+        }
+        else {
+            $this->Helper->log_add( '=========== processing subscription renewal payment (parent order #' . $parent_order_id . ')' );
+        }
 
+        // Get the token from the parent order (if any, else fail)
+        $token = $this->Helper->get_order_token( $parent_order_id, true );
         if ( empty( $token ) ) {
             $err = 'Token not provided.';
             $this->renewal_payment_failure( $renewal_order, $err );
+
+            return FALSE;
         }
 
         $this->is_scheduled_payment = TRUE;
 
-        // Maybe refund the amount used on the first trial order.
-        if ( $gestpay_fix_amount_zero = get_post_meta( $parent_order_id, GESTPAY_ORDER_META_AMOUNT, TRUE ) ) {
-
-            $refund_res = $this->Gestpay->Order_Actions->refund( $parent_order_id, $gestpay_fix_amount_zero, 'Write-Off' );
-
-            if ( ! $refund_res ) {
-                // If the order can't be refunded, probabily the merchant is using MOTO with
-                // separation, so we can try to settle and then refund.
-                $settle_res = $this->Gestpay->Order_Actions->settle( $parent_order_id, $gestpay_fix_amount_zero );
-                if ( $settle_res === TRUE ) {
-                    $refund_res = $this->Gestpay->Order_Actions->refund( $parent_order_id, $gestpay_fix_amount_zero, 'Write-Off' );
-                }
-            }
-
-            // Remove order meta so it will not be processed anymore.
-            delete_post_meta( $parent_order_id, GESTPAY_ORDER_META_AMOUNT );
-
-            // Log the write off
-            $this->Helper->log_add( $this->Gestpay->strings['fix_0_writeoff'] . " - Order {$renewal_order_id}" );
-
-            $parent_order = wc_get_order( $parent_order_id );
-
-            if ( $refund_res !== TRUE ) {
-                $refund_err = "Rimborso di 1 centesimo fallito: è necessario effettuarlo manualmente dal backoffice Gestpay.";
-                $parent_order->add_order_note( $refund_err );
-                $this->Helper->log_add( $refund_err );
-            }
-            else {
-                // Set parent order as refunded.
-                $parent_order->update_status( 'refunded' );
-            }
+        // --- Test a failed recurring payment
+        if ( defined( 'WC_GATEWAY_GESTPAY_FORCE_FAILED_RECURRING_PAYMENT' ) && WC_GATEWAY_GESTPAY_FORCE_FAILED_RECURRING_PAYMENT ) {
+            $this->Helper->log_add( "WC_GATEWAY_GESTPAY_FORCE_FAILED_RECURRING_PAYMENT è abilitata e tutti i pagamenti ricorrenti falliranno!" );
+            $token = 'TokenERR';
         }
-
-        $this->Helper->log_add( '=========== processing subscription renewal payment' );
 
         // Do the payment through S2S
         $response = $this->s2s_payment( $renewal_order,
             array(
-                'token'             => $token,
-                'amount'            => number_format( (float)$amount_to_charge, 2, '.', '' ),
-                'shopTransactionId' => $this->Helper->get_transaction_id( $renewal_order_id )
+                'shopLoginRec' => $this->Gestpay->shopLoginRec, // will be used if not empty
+                'apikeyRec' => $this->Gestpay->apikeyRec, // will be used if not empty
+                'token' => $token,
+                'amount' => number_format( (float)$amount_to_charge, 2, '.', '' ),
+
+                // Renewal order ID already contains the prefix (if any), so DO NOT add it again!
+                //'shopTransactionId' => $this->Helper->get_transaction_id( $renewal_order_id ) // <-- ERROR
+                'shopTransactionId' => $renewal_order_id
             )
         );
 
@@ -323,7 +390,6 @@ class Gestpay_Subscriptions {
 
             $this->renewal_payment_failure( $renewal_order, $err );
         }
-
     }
 
     /**
@@ -332,62 +398,87 @@ class Gestpay_Subscriptions {
      * @param object $order the \WC_Order object
      * @param string $message a message to display inside the "Payment Failed" order note
      */
-    public function renewal_payment_failure( $order, $message = '' ) {
+    public function renewal_payment_failure( $renewal_order, $message = '' ) {
 
-        $order_err = 'Gestpay S2S Error: ' . __( $message, $this->textdomain );
+        $renewal_order_err = 'Gestpay S2S Error: ' . __( $message, $this->textdomain );
 
-        WC_Subscriptions_Manager::process_subscription_payment_failure_on_order( $order );
-        $this->Helper->log_add( $order_err );
-        $order->add_order_note( $order_err );
+        if ( wcs_order_contains_renewal( $renewal_order->get_id() ) ) {
+            $parent_order_id = WC_Subscriptions_Renewal_Order::get_parent_order_id( $renewal_order->get_id() );
+            WC_Subscriptions_Manager::process_subscription_payment_failure_on_order( $parent_order_id );
+        }
 
-        throw new Exception( $order_err );
+        $this->Helper->log_add( $renewal_order_err );
+        $renewal_order->add_order_note( $renewal_order_err );
 
+        throw new Exception( $renewal_order_err );
     }
 
     /**
      * Render the payment method used for a subscription in the "My Subscriptions" table
      *
      * @param string $payment_method_to_display the default payment method text to display
-     * @param array $subscription_details the subscription details
-     *
+     * @param WC_Subscription $subscription the subscription details
      * @return string the subscription payment method
      */
     public function maybe_render_subscription_payment_method( $payment_method_to_display, $subscription ) {
 
-        foreach ( $this->saved_cards as $card ) {
-            $show_card = substr_replace( $card['token'], '**********', 2, -4 );
-            $payment_method_to_display = sprintf( __( 'Via %s %s/%s', $this->textdomain ),
-                $show_card,
-                $card['month'],
-                $card['year']
-            );
+        if ( wcs_is_subscription( $subscription ) ) {
+            $order_id = $subscription->get_parent_id();
+            $token = $this->Helper->get_order_token( $order_id );
+
+            if ( is_array( $token ) ) {
+                // Current token version is saved as array and contains expiry date.
+                return sprintf( __( 'Via %s %s/%s', $this->textdomain ),
+                    $this->show_token( $token['token'] ),
+                    $token['month'],
+                    $token['year']
+                );
+            }
+            else {
+                // @deprecated token as string and without expiry date values
+
+                if ( ! empty( $this->saved_cards ) ) {
+                    // user is logged in, try to match the saved token with the ones in the card section
+                    foreach ( $this->saved_cards as $card ) {
+                        if ( $card['token'] == $token ) {
+                            return sprintf( __( 'Via %s %s/%s', $this->textdomain ),
+                                $this->show_token( $card['token'] ),
+                                $card['month'],
+                                $card['year']
+                            );
+                        }
+                    }
+                }
+
+                // we don't know expiry date. Print just the token
+                return sprintf( __( 'Via %s', $this->textdomain ), $this->show_token( $token ) );
+            }
         }
 
         return $payment_method_to_display;
+    }
 
+    private function show_token( $token ) {
+        return substr_replace( $token, '**********', 2, -4 );
     }
 
     /**
-     * Add token data
+     * Here we can disallow future authorizations after cancelling a subscription.
      *
-     * @param array $order_data
-     * @param object $order the \WC_Order object
-     *
-     * @return array
+     * @param WC_Order $order Order object.
      */
-    public function add_token_data( $order_data, $order ) {
-
-        if ( ! $this->Gestpay->save_token ) {
-            throw new Exception( 'Gestpay S2S Exception: Saving token is disabled' );
-        }
-
-        $token = get_post_meta( $this->Helper->order_get( $order, 'id' ), GESTPAY_META_TOKEN, TRUE );
-        if ( ! empty( $token ) ) {
-            $order_data['gestpay_token'] = $token;
-        }
-
-        return $order_data;
-
+    public function cancelled_subscription( $order ) {
+        // @todo Not available now
     }
 
+	/**
+	 * Copy over the billing reference id and billing/shipping address info from
+	 * a successful manual payment for a failed renewal.
+	 *
+	 * @param WC_Subscription $subscription  The subscription for which the failing payment method relates.
+	 * @param WC_Order        $renewal_order The order which recorded the successful payment (to make up for the failed automatic payment).
+	 */
+	public function update_failing_payment_method( $subscription, $renewal_order ) {
+        // @todo Not available now
+    }
 }

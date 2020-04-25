@@ -4,15 +4,15 @@
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
  * Description: Abilita il sistema di pagamento GestPay by Axerve (Gruppo Banca Sella) in WooCommerce.
- * Version: 20181129
+ * Version: 20200500
  * Author: Axerve (Gruppo Banca Sella)
  * Author URI: https://www.axerve.com
  *
- * WC requires at least: 2.6
- * WC tested up to: 3.5
+ * WC requires at least: 3.0
+ * WC tested up to: 4.0
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -62,7 +62,9 @@ define( 'GESTPAY_WC_API', 'WC_Gateway_Gestpay' );
 
 // Immediately require these files
 require_once 'inc/class-gestpay-endpoint.php';
+require_once 'inc/class-wc-settings-tab-gestpay.php';
 require_once 'inc/class-gestpay-cards.php';
+require_once 'inc/class-gestpay-3DS2.php';
 
 add_action( 'plugins_loaded', 'init_wc_gateway_gestpay' );
 function init_wc_gateway_gestpay() {
@@ -88,7 +90,6 @@ function init_wc_gateway_gestpay() {
             $this->Helper->init_gateway( $this );
             $this->set_this_gateway();
             $this->add_actions();
-
         }
 
         /**
@@ -110,12 +111,25 @@ function init_wc_gateway_gestpay() {
                 return array( 'error' => $this->Helper->get_suhosin_error_msg( 'GestPay for WooCommerce' ) );
             }
 
-            if ( ! $this->Helper->is_wc_gte_26() ) {
-                return array( 'error' => 'GestPay for WooCommerce richiede WooCommerce versione >= 2.6.x' );
+            if ( ! version_compare( WC_VERSION, '3.0.0', '>=' ) ) {
+                return array( 'error' => 'GestPay for WooCommerce richiede WooCommerce versione >= 3.0.x' );
             }
 
             return TRUE;
+        }
 
+        /**
+         * Checks if we are working with a certain payment type.
+         */
+        function is_payment_type_ok( $params ) {
+            if ( $this->enabled == 'yes'
+                && ! empty( $params->paymentTypes['paymentType'] )
+                    && $params->paymentTypes['paymentType'] == $this->paymentType
+            ) {
+                return true;
+            }
+
+            return false;
         }
 
         /**
@@ -136,7 +150,6 @@ function init_wc_gateway_gestpay() {
             $this->logfile      = $this->id;
             $this->logo         = $this->plugin_url . '/images/gestpay-logo.png';
             $this->method_title = $title;
-
         }
 
         /**
@@ -164,7 +177,7 @@ function init_wc_gateway_gestpay() {
             // Register base support for products
             $this->supports = array( 'products' );
 
-            $this->is_s2s          = GESTPAY_PRO_TOKEN_AUTH == $this->account;
+            $this->is_s2s          = GESTPAY_PRO_TOKEN_AUTH == $this->account && $this->paymentType == 'CREDITCARD';
             $this->is_iframe       = GESTPAY_PRO_TOKEN_IFRAME == $this->account;
             $this->is_tokenization = $this->is_s2s || $this->is_iframe;
 
@@ -173,7 +186,6 @@ function init_wc_gateway_gestpay() {
 
             $this->is_cvv_required = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_send_cvv' );
             $this->save_token      = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_save_token' );
-            $this->is_3ds_enabled  = $this->is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_use_3ds' );
 
             // Allow merchants to require or not the authorization of the cards (in prod).
             $this->token_with_auth = $this->is_sandbox || "no" === get_option( 'wc_gestpay_token_auth' ) ? 'N' : 'Y';
@@ -191,6 +203,10 @@ function init_wc_gateway_gestpay() {
             }
 
             if ( $this->save_token && $this->is_tokenization && $this->Helper->is_subscriptions_active() ) {
+
+                $this->shopLoginRec = get_option( 'wc_gestpay_shop_login_recurring' );
+                $this->apikeyRec    = get_option( 'wc_gestpay_api_key_recurring' );
+
                 // Add support for subscriptions and subscription management functions
                 $this->supports = array_merge( $this->supports,
                     array(
@@ -201,7 +217,7 @@ function init_wc_gateway_gestpay() {
                         'subscription_amount_changes',
                         'subscription_payment_method_change', // Subscriptions 1.n compatibility
                         'subscription_payment_method_change_customer',
-                        'subscription_payment_method_change_admin',
+                        //'subscription_payment_method_change_admin', // Admin CAN'T change it.
                         'subscription_date_changes',
                         'multiple_subscriptions',
                         'default_credit_card_form',
@@ -241,10 +257,6 @@ function init_wc_gateway_gestpay() {
 
             $this->ws_S2S_resp_url = get_bloginfo( 'url' ) . '/?wc-api=' . GESTPAY_WC_API;
 
-            // Add a tab with Gestpay global options.
-            include_once 'inc/class-wc-settings-tab-gestpay.php';
-            WC_Settings_Tab_Gestpay::init( $this );
-
             // Load the S2S actions for the order.
             include_once 'inc/class-gestpay-order-actions.php';
             $this->Order_Actions = new Gestpay_Order_Actions( $this );
@@ -262,8 +274,8 @@ function init_wc_gateway_gestpay() {
                 // No need the "Stored Cards" tab into "My Account".
                 remove_filter( 'woocommerce_account_menu_items', array( 'Gestpay_Endpoint', 'new_menu_items' ) );
             }
-
         }
+
 
         /**
          * Add gateway actions.
@@ -291,7 +303,6 @@ function init_wc_gateway_gestpay() {
 
             // Do not allow subscriptions payments with other payment types.
             add_filter( 'woocommerce_available_payment_gateways', array( $this, 'available_payment_gateways' ), 99, 1 );
-
         }
 
         /**
@@ -341,17 +352,16 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
         function init_strings() {
 
             $this->strings = include 'inc/translatable-strings.php';
-
         }
 
         /**
-         * Disable extra Gestpay payment types when paying a subscription, because we can't get the Token.
+         * Disable extra Gestpay payment types which doesn't support WC Subscriptions, because we can't get a Token.
          */
         function available_payment_gateways( $available_gateways ) {
 
-            if ( class_exists( 'WC_Subscriptions_Cart' ) && WC_Subscriptions_Cart::cart_contains_subscription() ) {
+            if ( $this->Helper->is_a_subscription() ) {
                 foreach ( $available_gateways as $gateway_id => $gateway ) {
-                    if ( strpos( $gateway_id, 'wc_gateway_gestpay_' ) !== false ) {
+                    if ( $gateway_id != 'wc_gateway_gestpay_paypal' && strpos( $gateway_id, 'wc_gateway_gestpay_' ) !== false ) {
                         unset( $available_gateways[ $gateway_id ] );
                     }
                 }
@@ -364,6 +374,10 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
          * Admin Panel Options
          */
         function admin_options() {
+
+            echo '<h2>' . esc_html( $this->get_method_title() );
+            wc_back_link( __( 'Return to payments', 'woocommerce' ), admin_url( 'admin.php?page=wc-settings&tab=checkout' ) );
+            echo '</h2>';
 
             $err = $this->is_valid_for_use();
 
@@ -395,7 +409,6 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             <?php
 
             endif;
-
         }
 
         /**
@@ -410,7 +423,6 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             if ( $this->is_s2s ) {
                 $this->S2S->payment_fields();
             }
-
         }
 
         /**
@@ -442,7 +454,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
 
                 $params = $this->get_ab_params( $order );
 
-                if ( !empty( $params['b'] ) ) {
+                if ( ! is_wp_error( $params ) && !empty( $params['b'] ) ) {
                     $ret = array(
                         'result'   => 'success',
                         'redirect' => $this->payment_url . '?a=' . $params['a'] . '&b=' . $params['b'], // don't use add_query_args!
@@ -459,7 +471,6 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 'result'   => 'failed',
                 'redirect' => $this->Helper->wc_url( 'pay', $order )
             );
-
         }
 
         /**
@@ -474,7 +485,6 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
         public function process_refund( $order_id, $amount = null, $reason = '' ) {
 
             return $this->Order_Actions->refund( $order_id, $amount, $reason );
-
         }
 
         /**
@@ -505,7 +515,6 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                     echo $ret;
                 }
             }
-
         }
 
         /**
@@ -518,11 +527,12 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
          */
         function gestpay_encrypt( $params, $order_id ) {
 
-            $this->Helper->log_add( '[GESTPAY ENCRYPT PARAMETERS]', $params );
-
             // Create a SOAP client which uses the GestPay webservice and then encrypt values.
             try {
                 $client = $this->Helper->get_soap_client( $this->ws_url );
+                Gestpay_3DS2::add_3ds2_params( $params, $order_id, 'WSCryptDecrypt' );
+                $this->Helper->log_add( '[GESTPAY ENCRYPT PARAMETERS]', $params );
+
                 $objectresult = $client->Encrypt( $params );
                 $xml = simplexml_load_string( $objectresult->EncryptResult->any );
 
@@ -544,7 +554,6 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
 
                 return FALSE;
             }
-
         }
 
         /**
@@ -616,7 +625,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             }
 
             // Retrieve the order id (if different) and the order object
-            $order_id = $this->Helper->get_order_id_by_id( $raw_order_id );
+            $order_id = $this->Helper->get_real_order_id( $raw_order_id );
             $order = wc_get_order( $order_id );
 
             if ( empty( $order ) ) {
@@ -636,7 +645,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 update_post_meta( $order_id, '_gestpay_raw_order_id', $raw_order_id );
             }
 
-            $order_status = $this->Helper->order_get( $order, 'status' );
+            $order_status = $order->get_status();
 
             do_action( 'gestpay_before_processing_order', $order );
 
@@ -717,7 +726,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
          */
         function get_base_params( $order, $override_amount = FALSE, $maybe_token = TRUE ) {
 
-            $order_id = $this->Helper->order_get( $order, 'id' );
+            $order_id = $order->get_id();
 
             $this->Helper->log_add( "[INFO] Retrieving args for the order " . $order_id );
 
@@ -727,7 +736,9 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             $params->shopLogin         = $this->shopLogin;
             $params->uicCode           = $this->Helper->get_order_currency( $order );
             $params->shopTransactionId = $this->Helper->get_transaction_id( $order_id );
-            $params->amount            = $this->Helper->get_order_amount( $override_amount, $params->uicCode, $order, $order_id );
+            $params->amount            = $this->Helper->get_order_amount( $override_amount, $params->uicCode, $order );
+
+            $this->Helper->log_add( "[INFO] Order amount is " . $params->amount );
 
             if ( ! empty( $this->apikey ) ) {
                 $params->apikey = $this->apikey;
@@ -744,14 +755,14 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
 
                 if ( $this->param_buyer_email ) {
                     // MAX 50 chars
-                    $email = substr( $this->Helper->order_get( $order, 'billing_email' ), 0, 50 );
+                    $email = substr( $order->get_billing_email(), 0, 50 );
                     $params->buyerEmail = $this->Helper->get_clean_param( $email );
                 }
 
                 if ( $this->param_buyer_name ) {
                     // MAX 50 chars
-                    $name = $this->Helper->get_clean_param( $this->Helper->order_get( $order, 'billing_first_name' ) ) . ' ';
-                    $name.= $this->Helper->get_clean_param( $this->Helper->order_get( $order, 'billing_last_name' ) );
+                    $name = $this->Helper->get_clean_param( $order->get_billing_first_name() ) . ' ';
+                    $name.= $this->Helper->get_clean_param( $order->get_billing_last_name() );
                     $params->buyerName = substr( $name, 0, 50 );
                 }
 
@@ -764,7 +775,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 }
 
                 if ( $maybe_token && $this->save_token ) {
-                    $params->requestToken  = "MASKEDPAN";
+                    $params->requestToken = "MASKEDPAN";
                 }
 
                 // Allow altering parameters (Consel uses this)
@@ -772,7 +783,6 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             }
 
             return $params;
-
         }
 
         /**
@@ -785,7 +795,12 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
         function get_ab_params( $order ) {
 
             $params = $this->get_base_params( $order );
-            $order_id = $this->Helper->order_get( $order, 'id' );
+
+            if ( is_wp_error( $params ) ) {
+                return $params;
+            }
+
+            $order_id = $order->get_id();
             $crypted_string = $this->gestpay_encrypt( $params, $order_id );
 
             $this->Helper->log_add( "[INFO] crypted string: {$this->strings['crypted_string']} [0] $crypted_string" );
@@ -816,7 +831,6 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 "a" => $this->shopLogin,
                 "b" => $crypted_string
             );
-
         }
 
     } // end class WC_Gateway_Gestpay
@@ -837,6 +851,7 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
  */
 add_action( 'init', 'wc_gateway_gestpay_check_gateway_response', 999 );
 function wc_gateway_gestpay_check_gateway_response() {
+
     if ( ! empty( $_GET['wc-api'] ) && $_GET['wc-api'] == GESTPAY_WC_API ) {
         $Gestpay = new WC_Gateway_Gestpay();
         $Gestpay->check_gateway_response();
@@ -849,6 +864,7 @@ function wc_gateway_gestpay_check_gateway_response() {
  */
 add_action( 'wp_ajax_gestpay_settle_s2s', 'wc_gateway_gestpay_ajax_settle_s2s' );
 function wc_gateway_gestpay_ajax_settle_s2s() {
+
     $Gestpay = new WC_Gateway_Gestpay();
     $Gestpay->Order_Actions->ajax_settle();
 }
@@ -859,6 +875,7 @@ function wc_gateway_gestpay_ajax_settle_s2s() {
  */
 add_action( 'wp_ajax_gestpay_delete_s2s', 'wc_gateway_gestpay_ajax_delete_s2s' );
 function wc_gateway_gestpay_ajax_delete_s2s() {
+
     $Gestpay = new WC_Gateway_Gestpay();
     $Gestpay->Order_Actions->ajax_delete();
 }

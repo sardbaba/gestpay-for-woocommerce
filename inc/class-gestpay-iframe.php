@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -24,13 +24,13 @@ class Gestpay_Iframe {
         $this->Helper = $gestpay->Helper;
         $this->can_have_cards = FALSE;
 
-        if ( $this->Gestpay->save_token ) {
+        if ( $this->Gestpay->save_token && $this->Helper->is_subscriptions_active() ) {
+            // Add subscription features
             include_once 'class-gestpay-subscriptions.php';
-            $Subscr = new Gestpay_Subscriptions( $this->Gestpay );
+            $this->Subscr = new Gestpay_Subscriptions( $this->Gestpay );
         }
 
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
-
     }
 
     /**
@@ -41,7 +41,6 @@ class Gestpay_Iframe {
         $fancybox_path = $this->Helper->plugin_url . 'lib/jquery.fancybox';
         wp_enqueue_style( 'gestpay-for-woocommerce-fancybox-css', $fancybox_path . '.min.css' );
         wp_enqueue_script( 'gestpay-for-woocommerce-fancybox-js', $fancybox_path . '.min.js', array( 'jquery' ), WC_VERSION, true );
-
     }
 
     /**
@@ -73,7 +72,6 @@ class Gestpay_Iframe {
             // Second call
             return $_COOKIE[GESTPAY_IFRAME_COOKIE_B_PAR];
         }
-
     }
 
     /**
@@ -140,7 +138,7 @@ class Gestpay_Iframe {
             if ( Result.ErrorCode == 0 ) {
                 // --- Transaction correctly processed
 
-                var baseUrl = "<?php echo get_bloginfo( 'url' ); ?>/?wc-api=<?php echo GESTPAY_WC_API; ?>";
+                var baseUrl = "<?php echo $this->Gestpay->ws_S2S_resp_url; ?>";
 
                 // Decrypt the string to read the transaction results
                 document.location.replace( baseUrl + '&a=<?php echo $this->Gestpay->shopLogin; ?>&b=' + Result.EncryptedString );
@@ -236,6 +234,8 @@ class Gestpay_Iframe {
 
             GestPay.SendPayment( params, GestpayIframe.PaymentCallBack );
 
+            // To free the Shop from the need to comply with PCI-DSS Security standard, the OnSubmit event
+            // of the Credit card form must avoid to postback the Credit Card data to the checkout page!
             return false;
         }
 
@@ -261,7 +261,6 @@ class Gestpay_Iframe {
         </script>
 
         <?php
-
     }
 
     /**
@@ -271,53 +270,30 @@ class Gestpay_Iframe {
 
         setcookie( GESTPAY_IFRAME_COOKIE_B_PAR, "", 1, COOKIEPATH, COOKIE_DOMAIN );
         setcookie( GESTPAY_IFRAME_COOKIE_T_KEY, "", 1 );
-
     }
 
     /**
-     * Maybe stores the token.
+     * Maybe store the token.
      */
     function maybe_save_token( $xml_response, $order ) {
-
-        if ( ! function_exists( 'wcs_order_contains_subscription' ) ) {
-            return;
-        }
-
         if ( ! $this->Gestpay->save_token ) {
-            $this->Gestpay->Helper->log_add( '[iFrame - maybe_save_token] TOKEN storage is disabled.' );
+            $this->Gestpay->Helper->log_add( '[iFrame] TOKEN storage is disabled.' );
             return;
         }
 
-        if ( empty( (string)$xml_response->TOKEN ) ) {
-            $this->Gestpay->Helper->log_add( '[iFrame - maybe_save_token] xml_response does not contains the TOKEN' );
-            return;
-        }
+        $order_id = $order->get_id();
 
-        $order_id = $this->Helper->order_get( $order, 'id' );
-
-        if ( ! wcs_order_contains_subscription( $order_id, 'any' ) ) {
+        if ( ! $this->Helper->is_subscription_order( $order ) ) {
             // With iFrame, there is no need to store the token if the order does not contains a subscription
             // because it will not be used to pay other orders as is possible with the On-Site version.
-            $this->Gestpay->Helper->log_add( '[iFrame - maybe_save_token] Order does not contains a subscription: the TOKEN will not be saved.' );
+            $this->Gestpay->Helper->log_add( '[iFrame] Order #'.$order_id.' does not contains a subscription and the token will not be saved.' );
             return;
         }
 
-        $token = (string)$xml_response->TOKEN;
-
-        // Store the token in the order
-        update_post_meta( $order_id, GESTPAY_META_TOKEN, $token );
-
-        // Do not save the token, as we don't process the first payment with the token (for now)
-        /*
-        $the_card = array(
-            'token' => $token,
-            'month' => (int)$xml_response->TokenExpiryMonth,
-            'year'  => (int)$xml_response->TokenExpiryYear
-        );
-
-        // Maybe store the token to the users cards
-        $Subscr->Cards->save_card( $the_card );
-        */
+        $resp = $this->Helper->set_order_token( $order, $xml_response );
+        if ( empty( $resp ) ) {
+            $this->Helper->log_add( '[iFrame] Failed to save the token for Order #'.$order_id );
+        }
     }
 
 }

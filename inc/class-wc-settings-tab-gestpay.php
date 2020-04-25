@@ -3,23 +3,25 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
 
-class WC_Settings_Tab_Gestpay {
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
-    private static $gestpay;
+if ( ! class_exists( 'WC_Settings_Tab_Gestpay' ) ) :
+
+class WC_Settings_Tab_Gestpay {
 
     /**
      * Bootstraps the class and hooks required actions & filters.
      */
-    public static function init( $gestpay ) {
-        self::$gestpay = $gestpay;
-
+    public static function init() {
         add_filter( 'woocommerce_settings_tabs_array', __CLASS__ . '::add_settings_tab', 50 );
         add_action( 'woocommerce_settings_settings_tab_gestpay', __CLASS__ . '::output' );
         add_action( 'woocommerce_update_options_settings_tab_gestpay', __CLASS__ . '::update_settings' );
@@ -28,8 +30,8 @@ class WC_Settings_Tab_Gestpay {
     /**
      * Add a new settings tab to the WooCommerce settings tabs array.
      *
-     * @param array $settings_tabs Array of WooCommerce setting tabs & their labels, excluding the Subscription tab.
-     * @return array $settings_tabs Array of WooCommerce setting tabs & their labels, including the Subscription tab.
+     * @param array $settings_tabs Array of WooCommerce setting tabs & their labels, excluding this tab.
+     * @return array $settings_tabs Array of WooCommerce setting tabs & their labels, including this tab.
      */
     public static function add_settings_tab( $settings_tabs ) {
         $settings_tabs['settings_tab_gestpay'] = 'Gestpay for WooCommerce';
@@ -57,45 +59,38 @@ class WC_Settings_Tab_Gestpay {
             return 'Indirizzo IP da utilizzare nel backoffice di Gestpay: <b style="font-size:18px">' . $ip . '</b>';
         }
 
-        return "L'identificazione dell'indirizzo IP è fallita. Prova ad riaggiornare la pagina o contatta il tuo provider di hosting per conoscere l'IP.";
+        return "Identificazione dell'indirizzo IP non riuscita. Contatta il tuo provider di hosting per conoscere l'indirizzo IP.";
     }
 
-    /**
-     * Checks for some errors when WC Subscriptions is active and Gestpay is on tokenization mode.
-     */
     private static function maybe_show_admin_errors() {
+        $account = get_option( 'wc_gestpay_account_type' );
+        $is_s2s = GESTPAY_PRO_TOKEN_AUTH == $account;
+        $is_iframe = GESTPAY_PRO_TOKEN_IFRAME == $account;
+        $is_tokenization = $is_s2s || $is_iframe;
+        $save_token = $is_tokenization && "yes" == get_option( 'wc_gestpay_param_tokenization_save_token' );
 
-        if ( ! self::$gestpay->has_fields ) {
+        if ( ! $is_tokenization || ! class_exists( 'WC_Subscriptions' ) || ! class_exists( 'WC_Subscriptions_Admin' ) ) {
             // Not using tokenization.
             return;
         }
 
-        if ( self::$gestpay->Helper->is_subscriptions_active() && self::$gestpay->is_3ds_enabled ) : ?>
-
-        <div class="error">
-            <p>Attenzione! WooCommerce Subscriptions è attivo ma GestPay è abilitato per l'utilizzo del protocollo 3D Secure e per questo motivo i rinnovi automatici non verranno effettuati! Se si vuole utilizzare GestPay per effettuare i pagamenti ricorrenti è necessario che il protocollo 3D Secure sia disabilitato: per farlo è necessario rivolgersi al supporto tecnico di GestPay.</p>
-        </div>
-
-        <?php endif; ?>
-
-        <?php if ( class_exists('WC_Subscriptions') && WC_Subscriptions::is_duplicate_site() ) :
-
+        if (  WC_Subscriptions::is_duplicate_site() ) {
             // @see https://docs.woocommerce.com/document/subscriptions-handles-staging-sites/
             ?>
+<div class="error">
+    <p>Attenzione! WooCommerce Subscriptions viene considerato come sito duplicato: i pagamenti automatici verranno considerati come rinnovi manuali e quindi falliranno.</p>
+</div>
+            <?php
+        }
 
-        <div class="error">
-            <p>Attenzione! WooCommerce Subscriptions viene considerato come sito duplicato: i pagamenti automatici verranno considerati come rinnovi manuali e quindi falliranno.</p>
-        </div>
-
-        <?php endif; ?>
-
-        <?php if ( self::$gestpay->Helper->is_subscriptions_active() && ! self::$gestpay->save_token ) : ?>
-
-        <div class="error">
-            <p>Attenzione! WooCommerce Subscriptions è attivo ma GestPay è configurato per non memorizzare i Token: i pagamenti ricorrenti non potranno essere processati. Per poterli processare è necessario abilitare il salvataggio del Token.</p>
-        </div>
-
-        <?php endif;
+        $is_active = get_option( WC_Subscriptions_Admin::$option_prefix . '_is_active', false );
+        if ( $is_active && ! $save_token ) {
+            ?>
+<div class="error">
+    <p>Attenzione! WooCommerce Subscriptions è attivo ma GestPay è configurato per non memorizzare i Token: i pagamenti ricorrenti non potranno essere processati. Per poterli processare è necessario abilitare il salvataggio del Token.</p>
+</div>
+            <?php
+        }
     }
 
     /**
@@ -103,7 +98,7 @@ class WC_Settings_Tab_Gestpay {
      */
     public static function output() {
 
-    	self::maybe_show_admin_errors();
+        self::maybe_show_admin_errors();
 
         WC_Admin_Settings::output_fields( self::get_settings() );
 
@@ -174,6 +169,10 @@ class WC_Settings_Tab_Gestpay {
      * @return array Array of settings for @see woocommerce_admin_fields() function.
      */
     public static function get_settings() {
+
+        $url_doc = 'https://docs.gestpay.it/soap/getting-started/how-axerve-ecommerce-solutions-works/';
+        $wcs = '<a href="https://woocommerce.com/products/woocommerce-subscriptions/" target="_blank">WooCommerce Subscriptions</a>';
+
         $settings = array(
 
             // ------------------------------------------------- Main options
@@ -185,7 +184,13 @@ class WC_Settings_Tab_Gestpay {
             ),
             array(
                 'title' => 'Versione account',
-                'desc' => '<br>Seleziona la versione del tuo account Gestpay.<br>La versione On-Site consente di effettuare i pagamenti nella pagina del checkout e richiede che siano abilitati i servizi "Tokenization" e "Authorization".<br>La versione iFrame consente di effettuare i pagamenti nella pagina di pagamento di WooCommerce, senza abbandonare il sito: richiede che sia abilitato il servizio iFrame ed opzionalmente il servizio "Tokenization" (per i pagamenti ricorrenti).<br>Per maggiori informazioni visitare <a href="https://www.gestpay.it/gestpay/pricing/index.html" target="_blank">https://www.gestpay.it/gestpay/pricing/index.html</a>.',
+                'desc' => '<br>Seleziona la versione del tuo account Gestpay.'.
+                    '<br>- La versione On-Site consente di effettuare i pagamenti nella pagina del checkout'.
+                        ' e richiede che siano abilitati i servizi "Tokenization" e "Authorization". Sarà possibile utilizzare '. $wcs.
+                    '<br>- La versione iFrame consente di effettuare i pagamenti nella pagina di pagamento di WooCommerce,'.
+                        ' senza abbandonare il sito e richiede che sia abilitato il servizio "iFrame". Per utilizzare iFrame per gli'.
+                        ' abbonamenti (con '.$wcs.') è necessario anche il servizio "Tokenization".'.
+                        '<br><a href="https://www.gestpay.it/gestpay/pricing/index.html" target="_blank">Fai click qui</a> per maggiori informazioni sulle tipologie di account.',
                 'default' => GESTPAY_STARTER,
                 'type' => 'select',
                 'options' => array(
@@ -206,7 +211,7 @@ class WC_Settings_Tab_Gestpay {
             array(
                 'title' => 'API Key:',
                 'type' => 'password',
-                'desc' => "<br>Inserisci opzionalmente l'API Key per abilitare l'autenticazione congiunta o alternativa a quella con indirizzo IP. <a href=\"http://docs.gestpay.it/gs/how-gestpay-works.html#authentication\" target=\"_blank\">Fai click qui per maggiori informazioni</a>",
+                'desc' => "<br>Inserisci opzionalmente l'API Key per abilitare l'autenticazione congiunta o alternativa a quella con indirizzo IP. <a href=\"".$url_doc."\" target=\"_blank\">Fai click qui per maggiori informazioni</a>",
                 'default' => '',
                 'id' => 'wc_gestpay_api_key',
             ),
@@ -344,11 +349,26 @@ class WC_Settings_Tab_Gestpay {
                 'desc' => '',
                 'id' => 'wc_gateway_gestpay_pro_extra_options'
             ),
-
+            array(
+                // *** @deprecated - with 3DS 2.0 this is no longer useful, but is kept for compatibility ***
+                'title' => 'Gestpay Shop Login Recurring:',
+                'type' => 'text',
+                'desc' => "<br>Inserisci il tuo Shop Login fornito da Gestpay per i soli pagamenti ricorrenti (3DS non abilitato).",
+                'default' => '',
+                'id' => 'wc_gestpay_shop_login_recurring',
+            ),
+            array(
+                // *** @deprecated - with 3DS 2.0 this is no longer useful, but is kept for compatibility ***
+                'title' => 'API Key Recurring:',
+                'type' => 'password',
+                'desc' => "<br>Inserisci opzionalmente l'API Key per abilitare l'autenticazione congiunta o alternativa a quella con indirizzo IP per Gestpay Shop Login Recurring. <a href=\"".$url_doc."\" target=\"_blank\">Fai click qui per maggiori informazioni</a>",
+                'default' => '',
+                'id' => 'wc_gestpay_api_key_recurring',
+            ),
             array(
                 'title' => 'Memorizza Token',
                 'type' => 'checkbox',
-                'desc' => 'Se selezionato memorizza il token e consente di effettuare i pagamenti ricorrenti tramite WooCommerce Subscriptions. Se non selezionato, nessun token verrà mai memorizzato nel sistema e di conseguenza se si sta utilizzando WooCommerce Subscriptions i pagamenti ricorrenti non potranno essere processati. Si consiglia di lasciare sempre attiva l\'opzione se si utilizza WooCommerce Subscriptions.',
+                'desc' => 'Se selezionato memorizza il token della carta e consente all\'acquirente di riusare una carta precedentemente inserita (solo per la versione "On-site"), oltre che permettere di effettuare i pagamenti ricorrenti tramite '.$wcs.'. <strong>Se non selezionato i pagamenti ricorrenti con WooCommerce Subscriptions non potranno essere processati</strong>.<br>Verificare nel proprio account Gestpay, sezione "Campi&Parametri", che per il parametro "TOKEN" sia abiliato per la "Risposta" e per la "Risposta Web Service"',
                 'id' => 'wc_gestpay_param_tokenization_save_token',
                 'default' => 'no',
             ),
@@ -366,13 +386,6 @@ class WC_Settings_Tab_Gestpay {
                 'desc' => 'Invia anche il campo CVV (Card Verification Value) quando viene effettuata la richiesta del token. ATTENZIONE: se il campo è impostato come <i>Input</i> nel Back Office di Gestpay, questa opzione deve essere selezionata altrimenti si otterrà un errore.',
                 'id' => 'wc_gestpay_param_tokenization_send_cvv',
                 'default' => 'no',
-            ),
-            array(
-                'title' => '3D Secure',
-                'type' => 'checkbox',
-                'desc' => 'Se selezionato, il 3D Secure deve essere abilitato per questo negozio. ATTENZIONE! Se avete aderito ai servizi 3D-Secure, avete la garanzia della non ripudiabilità della transazione da parte del titolare di carta ma questa funzionalità impedisce di processare i pagamenti automatici (perché nel momento del pagamento automatico non si può richiedere il codice 3D secure); questo comporta che i pagamenti ricorrenti delle subscriptions non possano essere processati (o meglio verranno contrassegnati come falliti).',
-                'id' => 'wc_gestpay_param_tokenization_use_3ds',
-                'default' => 'yes',
             ),
             array(
                 'type' => 'sectionend',
@@ -448,3 +461,9 @@ class WC_Settings_Tab_Gestpay {
     }
 
 }
+
+
+endif; // class exists
+
+
+WC_Settings_Tab_Gestpay::init();

@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -12,9 +12,8 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
-/**
+/*
  * Render the payment fields on checkout
- *
  * @see also https://developer.mozilla.org/en-US/docs/Web/Security/Securing_your_site/Turning_off_form_autocompletion
  * for using "nope" instead of "off" as a value of the attribute "autocomplete".
  */
@@ -23,6 +22,10 @@ $cards = isset( $this->Subscr ) ? $this->Subscr->saved_cards : false;
 
 if ( $this->Gestpay->is_sandbox ) : ?>
 
+    <style type="text/css">
+        #gestpay-s2s-sandbox{float:left;width:100%;padding:10px 20px;background:#ececec}
+        #gestpay-s2s-sandbox *{float:left;line-height:1.5;}
+    </style>
     <p id="gestpay-s2s-sandbox">
         <small>
             <strong>Test Mode</strong><br>
@@ -38,29 +41,35 @@ if ( $this->Gestpay->is_sandbox ) : ?>
 ?>
 
 <style type="text/css">
-    #gestpay-s2s-sandbox { float:left; width: 100%; padding: 10px 20px; background: #ececec }
-    #gestpay-s2s-sandbox * { float: left; line-height: 1.5; }
-    #payment ul.payment_methods li label[for='payment_method_gestpay-s2s'] img:nth-child(n+2) { margin-left:1px; }
+    #payment ul.payment_methods li label[for='payment_method_gestpay-s2s'] img:nth-child(n+2) {margin-left:1px;}
 </style>
 
-<script type="text/javascript">
-    jQuery(document).ready(function($) {
-        $('input.gestpay-s2s-card-selection:radio').change(
-            function(){
-                if ( $(this).val() != 'new-card' ) {
+<fieldset id="user-saved-cards">
+
+<?php if ( $has_cards && $this->can_have_cards ) : ?>
+
+    <script type="text/javascript">
+        jQuery(document).ready(function($) {
+            function showHideNewCardForm() {
+                if ( $('#gestpay-s2s-use-new-card').is(':checked') === false) {
                     $('#gestpay-s2s-new-card').hide();
                 }
                 else {
                     $('#gestpay-s2s-new-card').show();
                 }
             }
-        );
-    });
-</script>
 
-<fieldset id="user-saved-cards">
+            showHideNewCardForm(); // on load
 
-<?php if ( $has_cards && $this->can_have_cards ) : ?>
+            $( document.body ).on( 'updated_checkout', function() {
+                showHideNewCardForm();
+            });
+
+            $('input.gestpay-s2s-card-selection:radio').change( function() {
+                showHideNewCardForm();
+            });
+        });
+    </script>
 
     <p class="form-row form-row-wide">
 
@@ -97,9 +106,7 @@ if ( $this->Gestpay->is_sandbox ) : ?>
                 style="width:auto;display:inline-block;"
                 value="<?php echo esc_attr( $card['token']); ?>" <?php checked( $this_cc_is_checked ); ?> />
 
-            <label style="display:inline;"
-                for="gestpay-s2s-cc-token-<?php echo esc_attr( $card['token'] ); ?>"><?php echo $expir_str; ?></label>
-
+            <label style="display:inline;" for="gestpay-s2s-cc-token-<?php echo esc_attr( $card['token'] ); ?>"><?php echo $expir_str; ?></label>
             <br />
 
         <?php endforeach; ?>
@@ -114,8 +121,6 @@ if ( $this->Gestpay->is_sandbox ) : ?>
     </p>
 
 <?php endif; // end if $has_cards ?>
-
-<?php $div_style = $cc_is_checked ? 'none' : 'block'; ?>
 
 <?php if ( $this->Gestpay->is_iframe ) : ?>
 
@@ -133,7 +138,7 @@ if ( $this->Gestpay->is_sandbox ) : ?>
 
 <?php endif; // end if $this->Gestpay->is_iframe ?>
 
-    <div id="gestpay-s2s-new-card" style="display:<?php echo $div_style; ?>; margin-top: 10px;">
+    <div id="gestpay-s2s-new-card" style="display: <?php echo $cc_is_checked ? 'none' : 'block'; ?>; margin-top: 10px;">
 
     <?php
     if ( $this->Gestpay->param_buyer_name ) {
@@ -171,6 +176,7 @@ if ( $this->Gestpay->is_sandbox ) : ?>
     ?>
 
     <?php // --- expiration date ?>
+
     <p class="form-row validate-required">
 
         <label for="gestpay-cc-exp-date"><?php echo $this->Gestpay->strings['s2s_card_exp_date']; ?> <span class="required">*</span></label>
@@ -233,7 +239,7 @@ if ( $this->Gestpay->is_sandbox ) : ?>
                 <h3><?php echo $this->Gestpay->strings['gestpay_cvv_help_amex_title']; ?></h3>
                 <p>
                     <p class="gestpay-fancybox-cvv-textcard-text">
-                    <?php echo $this->Gestpay->strings['gestpay_cvv_help_amex_text']; ?>
+                        <?php echo $this->Gestpay->strings['gestpay_cvv_help_amex_text']; ?>
                     </p>
                     <p class="gestpay-fancybox-cvv-textcard-card"><img src="<?php echo $img_url; ?>/images/4DBC.gif"></p>
                 </p>

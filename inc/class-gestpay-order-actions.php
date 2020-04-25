@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -167,7 +167,7 @@ class Gestpay_Order_Actions {
             $params->amount      = $amount;
             $params->uicCode     = $this->Helper->get_order_currency( $order );
             $params->bankTransID = (int)trim( $banktid );
-            $params->shopTransID = $order_id;
+            $params->shopTransID = $this->Helper->get_transaction_id( $order_id );
             //$params->FullFillment = ''; // Not used.
 
             if ( ! empty( $this->Gestpay->apikey ) ) {
@@ -227,7 +227,7 @@ class Gestpay_Order_Actions {
 
         try {
             // Validate that the settle can occur
-            $order   = wc_get_order( $order_id );
+            $order = wc_get_order( $order_id );
             $banktid = get_post_meta( $order_id, GESTPAY_ORDER_META_BANK_TID, TRUE );
 
             // Define parameters for Delete
@@ -288,7 +288,7 @@ class Gestpay_Order_Actions {
 function gestpay_order_actions_add_action_buttons( $order ) {
 
     // Check if the order is paid and is paid with Gestpay, otherwise we don't need these buttons.
-    if ( 'wc_gateway_gestpay' != get_post_meta( wc_gp_get_order_id( $order ), '_payment_method', TRUE ) || ! $order->is_paid() ) {
+    if ( 'wc_gateway_gestpay' != get_post_meta( $order->get_id(), '_payment_method', TRUE ) || ! $order->is_paid() ) {
         return;
     }
 

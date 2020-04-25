@@ -3,8 +3,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -111,7 +111,10 @@ return array(
         __( "Validation error: please double check required fields and try again. If this error persists, please contact the site administrator.", $t ),
 
     "s2s_no_cards" =>
-        __( "There is not yet any credit card saved.", $t ),
+        __( "There is not yet any token of credit card saved.", $t ),
+
+    "s2s_cant_save_cards" =>
+        __( "The storage of the credit card token is disabled.", $t ),
 
     "s2s_confirm_token_delete" =>
         __( "Are you sure you want to delete this card?", $t ),
@@ -179,9 +182,6 @@ return array(
     "subscr_approved" =>
         __( "GestPay Subscription Renewal Payment Approved", $t ),
 
-    "fix_0_writeoff" =>
-        __( "Write-off €0.01", $t ),
-
     "gestpay_cvv_help" =>
         __( "Where do I find the security code?", $t ),
 
@@ -205,4 +205,20 @@ return array(
 
     "tls_text_error" =>
         __( "Warning! We are sorry, but the browser you are using is no longer supported. You cannot complete payment with this browser because it is not secure, but you can update it or use a modern browser:", $t ),
+
+    "mybank_payoff" =>
+        __( "Secure payments through your online banking account.<br>Learn more", $t ),
+
+    "gestpay_mybank_list_intro" =>
+        __( "Please select your bank from the list. You will be redirected to your home banking portal to complete the operation", $t ),
+
+    "gestpay_mybank_list" =>
+        __( "Bank/Institute Selection:", $t ),
+
+    "gestpay_mybank_list_notfound" =>
+        __( "Can't find your bank? Click here.", $t ),
+
+    "gestpay_mybank_list_must" =>
+        __( "Please select a bank/institute to pay with MyBank.", $t ),
+
 );

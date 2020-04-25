@@ -1,8 +1,8 @@
 /**
  * Gestpay for WooCommerce
  *
- * Copyright: © 2013-2016 MAURO MASCIA (www.mauromascia.com - info@mauromascia.com)
- * Copyright: © 2017-2018 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
+ * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -210,4 +210,37 @@ div.gestpay-form .form-wrap label {
 .gestpay-fancybox-cvv-textcard-card {
     float: left;
     width: 30%;
+}
+
+.payment_method_wc_gateway_gestpay_mybank label img {
+    max-height: 33px !important;
+    float: right;
+}
+
+#mybank-container {
+    background: #FFF !important;
+    padding: 10px;
+    color: #000 !important;
+    border: 1px solid #1B4B68;
+}
+
+#mybank-container a {
+    color: #1B4B68 !important;
+}
+
+#mybank-container p {
+    margin: 1rem 0 !important;
+    line-height: 1.2;
+}
+
+#mybank-container-img {
+    float: left;
+    width: 100%;
+}
+
+#mybank-container-img img {
+    float: left !important;
+    clear: both;
+    height: auto !important;
+    max-height: 100% !important;
 }
