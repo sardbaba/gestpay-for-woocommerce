@@ -152,7 +152,10 @@ if ( $this->Gestpay->is_sandbox ) : ?>
                 'required' => true,
                 'custom_attributes' => array(
                     'autocomplete' => 'nope',
-                    'style' => 'width:180px;'
+                    'style' => 'width:180px;',
+                    'autocorrect' => 'no',
+                    'autocapitalize' => 'no',
+                    'spellcheck' => 'no',
                 ),
             )
         );
@@ -166,10 +169,14 @@ if ( $this->Gestpay->is_sandbox ) : ?>
             'label' => $this->Gestpay->strings['s2s_ccn'],
             'maxlength' => 20,
             'required' => true,
+            'placeholder' => '•••• •••• •••• ••••',
             'custom_attributes' => array(
                 'autocomplete' => 'nope',
                 'data-encrypted-name' => 'number',
-                'style' => 'width:180px;'
+                'style' => 'width:180px;',
+                'autocorrect' => 'no',
+                'autocapitalize' => 'no',
+                'spellcheck' => 'no',
             ),
         )
     );

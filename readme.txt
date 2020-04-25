@@ -42,6 +42,8 @@ Here is a list of filters and actions used in this plugin:
 * gestpay_before_order_delete
 * gestpay_order_delete_success
 * gestpay_order_delete_fail
+* gestpay_after_s2s_order_failed
+
 
 = Filters =
 
@@ -53,6 +55,9 @@ Here is a list of filters and actions used in this plugin:
 * gestpay_gateway_cards_images
 * gestpay_alter_order_id -> this can be used to add, for example, a prefix to the order ID
 * gestpay_revert_order_id -> this must be used to revert back the order ID changed with the `gestpay_alter_order_id` filter
+* gestpay_s2s_validate_payment_fields
+* gestpay_s2s_payment_fields_error_strings
+
 
 == Installation ==
 
@@ -61,6 +66,12 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20200500.test =
+* Checks - Verified compatibility with WooCommerce 4.0.x and Wordpress 5.4
+* Fixed ability to change the Gestpay multi-payments order: is_s2s must be true only when paymentType is `CREDITCARD`.
+* Added action `gestpay_after_s2s_order_failed`
+* Added validation for the S2S payment fields and a realated filters `gestpay_s2s_validate_payment_fields` and `gestpay_s2s_payment_fields_error_strings`
 
 = 20191022 =
 * Fixed return URL and message when the change of the tokenized card, related to a subscription, is failed.

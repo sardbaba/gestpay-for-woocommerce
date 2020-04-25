@@ -34,7 +34,7 @@ class Gestpay_S2S {
 
         $fancybox_path = $this->Helper->plugin_url . 'lib/jquery.fancybox';
         wp_enqueue_style( 'gestpay-for-woocommerce-fancybox-css', $fancybox_path . '.min.css' );
-        wp_enqueue_script( 'gestpay-for-woocommerce-fancybox-js', $fancybox_path . '.min.js', array( 'jquery' ), WC_VERSION, true );
+        wp_enqueue_script( 'gestpay-for-woocommerce-fancybox-js', $fancybox_path . '.min.js', array( 'jquery' ), WC_VERSION, TRUE );
     }
 
 
@@ -44,6 +44,55 @@ class Gestpay_S2S {
     public function payment_fields() {
 
         include_once 'checkout-payment-fields.php';
+    }
+
+    /**
+     * Returns true if the posted credit card fields are valid, false otherwise
+     */
+    function validate_payment_fields() {
+
+        $errors = apply_filters( 'gestpay_s2s_payment_fields_error_strings', array(
+            'cc_number' => "Si prega di valorizzare correttamente il numero di carta di credito",
+            'cc_expiry' => "Si prega di valorizzare mese/anno di scadenza",
+            'cc_cvv'    => "Si prega di valorizzare il codice di sicurezza",
+            'cc_buyer'  => "Si prega di valorizzare il nome del proprietario della carta"
+        ));
+
+        $is_valid = TRUE;
+
+        $buyer_name = $this->Helper->get_post( 'gestpay-cc-buyer-name' );
+        $cc_number = $this->Helper->get_post( 'gestpay-cc-number' );
+        $cc_month = $this->Helper->get_post( 'gestpay-cc-exp-month' );
+        $cc_year = $this->Helper->get_post( 'gestpay-cc-exp-year' );
+        $cc_cvv = $this->Helper->get_post( 'gestpay-cc-cvv' );
+
+        // Validate card number
+        $cc_number = str_replace( array( ' ', '-' ), '', $cc_number );
+        if ( empty( $cc_number ) || strlen( $cc_number ) < 12 || strlen( $cc_number ) > 19 || !ctype_digit( $cc_number ) ) {
+            $this->Helper->wc_add_error( $errors['cc_number'] );
+            $is_valid = FALSE;
+        }
+
+        // These must be filled
+        if ( empty( $cc_month ) || empty( $cc_year ) ) {
+            $this->Helper->wc_add_error( $errors['cc_expiry'] );
+            $is_valid = FALSE;
+        }
+
+        // Maybe check also the card security code
+        if ( $this->Gestpay->is_cvv_required && ( empty( $cc_cvv ) || strlen( $cc_cvv ) < 3 || strlen( $cc_cvv ) > 4 || !ctype_digit( $cc_cvv ) ) ) {
+            $this->Helper->wc_add_error( $errors['cc_cvv'] );
+            $is_valid = FALSE;
+        }
+
+        // Maybe check the buyer name
+        if ( $this->Gestpay->param_buyer_name && empty( $buyer_name ) ) {
+            $this->Helper->wc_add_error( $errors['cc_buyer'] );
+            $is_valid = FALSE;
+        }
+
+        // Allow actors to filter the credit card field validation.
+        return apply_filters( 'gestpay_s2s_validate_payment_fields', $is_valid, $this );
     }
 
     /**
