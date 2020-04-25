@@ -140,7 +140,6 @@ class Gestpay_Subscriptions {
      */
     public function s2s_payment( $order, $args = array() ) {
 
-        $transaction_id = '';
         $order_id = $order->get_id();
 
         if ( ! $client = $this->Helper->get_soap_client( $this->Gestpay->ws_S2S_url ) ) {
@@ -270,6 +269,9 @@ class Gestpay_Subscriptions {
                     // If we saved the token let's cancel it.
                     delete_post_meta( $order_id, GESTPAY_META_TOKEN );
                 }
+
+                // Allow actors to add additional code after order is failed
+                do_action( 'gestpay_after_s2s_order_failed', $order, $xml_response );
 
                 $this->Helper->log_add( '[ERROR]: ' . $err );
 
