@@ -138,6 +138,7 @@ class Gestpay_Subscriptions {
     /**
      * Check with if the transaction has been already paid.
      * This can be useful to prevent multiple payment for the same transaction.
+     * @see also needs_payment()
      */
     private function has_been_already_paid( $order_id, $client, $p ) {
 
@@ -225,6 +226,7 @@ class Gestpay_Subscriptions {
             $params->shopTransactionId = $this->Helper->get_transaction_id( $args['shopTransactionId'] );
         }
 
+        // Add another layer of check to prevent multiple payments.
         $has_been_already_paid = $this->has_been_already_paid( $order_id, $client, $params );
         if ( $has_been_already_paid ) {
             $this->Helper->log_add( '[WARNING] Il pagamento per l\'ordine '+ $order_id +' è stato interrotto perché è già stato pagato!' );
@@ -359,7 +361,8 @@ class Gestpay_Subscriptions {
         }
 
         // NEVER process an already paid order!
-        if ( ! ( $renewal_order->needs_payment() || $renewal_order->has_status( array( 'on-hold', 'failed', 'cancelled' ) ) ) ) {
+        if ( ! $renewal_order->needs_payment() ) {
+            // This should be enough but we also added another check @see has_been_already_paid()
             return FALSE;
         }
 
@@ -450,6 +453,9 @@ class Gestpay_Subscriptions {
 
         $this->Helper->log_add( $renewal_order_err );
         $renewal_order->add_order_note( $renewal_order_err );
+
+        // Allow actors to hook into renewal_payment_failure
+        do_action( 'gestpay_on_renewal_payment_failure', $renewal_order, $message, $this );
 
         throw new Exception( $renewal_order_err );
     }

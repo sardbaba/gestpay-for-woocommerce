@@ -43,7 +43,7 @@ Here is a list of filters and actions used in this plugin:
 * gestpay_order_delete_success
 * gestpay_order_delete_fail
 * gestpay_after_s2s_order_failed
-
+* gestpay_on_renewal_payment_failure
 
 = Filters =
 
@@ -72,6 +72,7 @@ Here is a list of filters and actions used in this plugin:
 * Fixed ability to change the Gestpay multi-payments order: is_s2s must be true only when paymentType is `CREDITCARD`.
 * Added action `gestpay_after_s2s_order_failed`
 * Added validation for the S2S payment fields and a realated filters `gestpay_s2s_validate_payment_fields` and `gestpay_s2s_payment_fields_error_strings`
+* Added another layer of checks (`has_been_already_paid`) to prevent multiple payments.
 
 = 20191022 =
 * Fixed return URL and message when the change of the tokenized card, related to a subscription, is failed.

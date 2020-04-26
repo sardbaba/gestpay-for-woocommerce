@@ -116,8 +116,6 @@ class Gestpay_S2S {
 
                 $this->Helper->log_add( '[reusing token]: ' . $token );
 
-                $order_id = $order->get_id();
-
                 if ( !empty( $this->Subscr->saved_cards ) ) {
                     $card_token = array();
                     foreach ( $this->Subscr->saved_cards as $card ) {
