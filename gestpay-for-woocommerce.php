@@ -177,7 +177,7 @@ function init_wc_gateway_gestpay() {
             // Register base support for products
             $this->supports = array( 'products' );
 
-            $this->is_s2s          = GESTPAY_PRO_TOKEN_AUTH == $this->account && $this->paymentType == 'CREDITCARD';
+            $this->is_s2s          = GESTPAY_PRO_TOKEN_AUTH == $this->account;
             $this->is_iframe       = GESTPAY_PRO_TOKEN_IFRAME == $this->account;
             $this->is_tokenization = $this->is_s2s || $this->is_iframe;
 
@@ -420,13 +420,13 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 echo wpautop( wptexturize( wp_kses_post( __( $this->description ) ) ) );
             }
 
-            if ( $this->is_s2s ) {
+            if ( $this->is_s2s && $this->paymentType == 'CREDITCARD' ) {
                 $this->S2S->payment_fields();
             }
         }
 
         public function validate_fields() {
-            if ( $this->is_s2s ) {
+            if ( $this->is_s2s && $this->paymentType == 'CREDITCARD' ) {
                 return $this->S2S->validate_payment_fields();
             }
         }
