@@ -140,7 +140,7 @@ class Gestpay_Subscriptions {
      * This can be useful to prevent multiple payment for the same transaction.
      * @see also needs_payment()
      */
-    private function has_been_already_paid( $order_id, $client, $p ) {
+    private function has_been_already_paid( $client, $p ) {
 
         if ( defined( 'GESTPAY_S2S_ALREADY_PAID_API' ) && GESTPAY_S2S_ALREADY_PAID_API ) {
             $params = new stdClass();
@@ -159,13 +159,9 @@ class Gestpay_Subscriptions {
             catch ( Exception $e ) {
                 $this->Helper->log_add( '[ERROR CallReadTrxS2S]: ' . $e->getMessage() );
             }
-            return FALSE;
         }
-        else {
-            // This is the faster method
-            $banktid = get_post_meta( $order_id, GESTPAY_ORDER_META_BANK_TID, TRUE );
-            return !empty( $banktid ) ? TRUE : FALSE;
-        }
+
+        return FALSE;
     }
 
 
@@ -227,7 +223,7 @@ class Gestpay_Subscriptions {
         }
 
         // Add another layer of check to prevent multiple payments.
-        $has_been_already_paid = $this->has_been_already_paid( $order_id, $client, $params );
+        $has_been_already_paid = $this->has_been_already_paid( $client, $params );
         if ( $has_been_already_paid ) {
             $this->Helper->log_add( '[WARNING] Il pagamento per l\'ordine '+ $order_id +' è stato interrotto perché è già stato pagato!' );
             return FALSE;
