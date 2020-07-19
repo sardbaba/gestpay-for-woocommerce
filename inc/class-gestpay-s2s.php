@@ -197,7 +197,7 @@ class Gestpay_S2S {
         }
 
         if ( ! empty( $s2s_response['error_code'] ) && ! empty( $s2s_response['error_desc'] ) ) {
-            if ( ! wcs_is_subscription( $order ) ) {
+            if ( function_exists( 'wcs_is_subscription' ) && ! wcs_is_subscription( $order ) ) {
                 // Update to failed only if is not a card change
                 $order->update_status( 'failed', 'Payment Error: ' . $s2s_response['error_code'] . ' ' . $s2s_response['error_desc'] );
             }

@@ -3,11 +3,11 @@ Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, axerve, iframe, direct payment gateway
 Requires at least: 4.0.1
 Tested up to: 5.4
-Stable tag: 20200500.test
+Stable tag: 20200719
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 3.0
-WC tested up to: 4.0
+WC tested up to: 4.3
 
 Gestpay for WooCommerce extends WooCommerce providing the payment gateway for Gestpay by Axerve (Banca Sella).
 
@@ -67,12 +67,15 @@ Here is a list of filters and actions used in this plugin:
 
 == Changelog ==
 
-= 20200500.test =
-* Checks - Verified compatibility with WooCommerce 4.0.x and Wordpress 5.4
-* Fixed ability to change the Gestpay multi-payments order: is_s2s must be true only when paymentType is `CREDITCARD`.
-* Added action `gestpay_after_s2s_order_failed`
-* Added validation for the S2S payment fields and a realated filters `gestpay_s2s_validate_payment_fields` and `gestpay_s2s_payment_fields_error_strings`
-* Added another layer of checks (`has_been_already_paid`) to prevent multiple payments.
+= 20200719 =
+* Checks: Verified compatibility with Wordpress 5.4, WooCommerce 4.2-4.3 and WooCommerce Subscriptions 3.0.4
+* New: Added ability to change the completed order status when using MOTO with separation and automatically handle the actions to be performed when the state of an order is manually changed.
+* Fix: Prevent Fatal Error Call to undefined function wcs_is_subscription() when not using WooCommerce Subscriptions.
+* Fix: Fixed ability to change the Gestpay multi-payments order: is_s2s must be true only when paymentType is `CREDITCARD`.
+* Fix: the status of an active subscription must no change to failed if the cardholder abandons the card change.
+* Improvement: Added more logging when adding 0_order_amount_fix.
+* Improvement: Added action `gestpay_after_s2s_order_failed` to let developers add additional code.
+* Improvement: Added validation for the S2S payment fields and a realated filters `gestpay_s2s_validate_payment_fields` and `gestpay_s2s_payment_fields_error_strings`
 
 = 20191022 =
 * Fixed return URL and message when the change of the tokenized card, related to a subscription, is failed.

@@ -89,7 +89,7 @@ class Gestpay_Subscriptions {
             return;
         }
 
-        if ( wcs_is_subscription( $order_id ) ) {
+        if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order_id ) ) {
             $subscription = wcs_get_subscription( $order_id );
             $order_id = $subscription->get_parent_id();
             $token = false;
@@ -225,7 +225,7 @@ class Gestpay_Subscriptions {
         // Add another layer of check to prevent multiple payments.
         $has_been_already_paid = $this->has_been_already_paid( $client, $params );
         if ( $has_been_already_paid ) {
-            $this->Helper->log_add( '[WARNING] Il pagamento per l\'ordine '+ $order_id +' è stato interrotto perché è già stato pagato!' );
+            $this->Helper->log_add( '[WARNING] Il pagamento per l\'ordine '. $order_id .' è stato interrotto perché è già stato pagato!' );
             return FALSE;
         }
 
@@ -465,7 +465,7 @@ class Gestpay_Subscriptions {
      */
     public function maybe_render_subscription_payment_method( $payment_method_to_display, $subscription ) {
 
-        if ( wcs_is_subscription( $subscription ) ) {
+        if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $subscription ) ) {
             $order_id = $subscription->get_parent_id();
             $token = $this->Helper->get_order_token( $order_id );
 

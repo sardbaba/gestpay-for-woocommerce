@@ -333,6 +333,10 @@ class WC_Gateway_GestPay_Helper {
             return;
         }
 
+        $tot = $order->get_total();
+        $status = $order->get_status();
+        $this->log_add( "[order_amount_0] tot ordine: " . $tot . ' status: ' . $status );
+
         // Add the amount only if it wasn't already added.
         // If a payment fails, the cent is assigned anyway to the order, so we must not add it again.
         $maybe_amount_fix = get_post_meta( $order->get_id(), GESTPAY_ORDER_META_AMOUNT, TRUE );
@@ -341,7 +345,10 @@ class WC_Gateway_GestPay_Helper {
             $this->log_add( $fix_message );
             $order->add_order_note( $fix_message );
             update_post_meta( $order->get_id(), GESTPAY_ORDER_META_AMOUNT, $amount );
+
+            $maybe_amount_fix = $amount;
         }
+        $this->log_add( "[order_amount_0] update_post_meta ".GESTPAY_ORDER_META_AMOUNT." per id ordine: " . $order->get_id() . ' -> amount: ' . $maybe_amount_fix );
     }
 
     /**
@@ -354,38 +361,60 @@ class WC_Gateway_GestPay_Helper {
         }
 
         $order_id = $order->get_id();
+        $tot = $order->get_total();
+        $status = $order->get_status();
+
+        $this->log_add( "[order_amount_0] Refund per ordine n. ".$order_id." tot ordine: ".$tot.' status: '.$status );
+
+        $parent_order = $this->get_parent_order_id( $order_id );
+        $this->log_add( "[order_amount_0] get_parent_order_id " . $parent_order );
 
         // Maybe refund the amount used on the first trial order.
         $gestpay_fix_amount_zero = get_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT, TRUE );
         if ( $gestpay_fix_amount_zero ) {
             $refund_res = $this->gw->Order_Actions->refund( $order_id, $gestpay_fix_amount_zero, 'Write-Off' );
 
+            $this->log_add( "[order_amount_0] Order_Actions refund di:" . $gestpay_fix_amount_zero );
+
             if ( ! $refund_res ) {
-                // If the order can't be refunded, probabily the merchant is using MOTO with
+                $this->log_add( "[order_amount_0] Order_Actions settle di:" . $gestpay_fix_amount_zero );
+
+                // If the order can't be refunded, probably the merchant is using MOTO with
                 // separation, so we can try to settle and then refund.
                 $settle_res = $this->gw->Order_Actions->settle( $order_id, $gestpay_fix_amount_zero );
                 if ( $settle_res === TRUE ) {
+                    $this->log_add( "[order_amount_0] Order_Actions settle->refund di:" . $gestpay_fix_amount_zero );
                     $refund_res = $this->gw->Order_Actions->refund( $order_id, $gestpay_fix_amount_zero, 'Write-Off' );
                 }
             }
 
             // Remove order meta so it will not be processed anymore (even if refund is failed).
             delete_post_meta( $order_id, GESTPAY_ORDER_META_AMOUNT );
+            $this->log_add( "[order_amount_0] delete_post_meta per id:" . $order_id . ' meta: ' . GESTPAY_ORDER_META_AMOUNT );
 
             $add_order_error = !function_exists( 'wcs_is_subscription' ) || !wcs_is_subscription( $order );
 
             if ( $refund_res !== TRUE ) {
                 $refund_err = "ERRORE: Rimborso di 1 centesimo fallito ";
-                if ( $add_order_error )
+                if ( $add_order_error ) {
+                    $this->log_add( "[order_amount_0] add_order_note refunded" );
                     $order->add_order_note( $refund_err );
+                }
+
                 $this->log_add( $refund_err . "per Ordine #" . $order_id );
             }
             else {
-                if ( $add_order_error )
+                if ( $add_order_error ) {
+                    $this->log_add( "[order_amount_0] update_status refunded" );
                     $order->update_status( 'refunded' );
+                }
+
                 $this->log_add( "Rimborso di 1 centesimo effettuato correttamente per Ordine #" . $order_id );
             }
 
+        }
+        else {
+            $this->log_add( "[order_amount_0] skip refund valore: " . $gestpay_fix_amount_zero );
         }
     }
 
@@ -513,7 +542,7 @@ class WC_Gateway_GestPay_Helper {
 
     /**
      * If the merchant is using a plugin which alters the original ID of the order
-     * we need to extract it, so that can be used in normal functions, like update_post_meta
+     * we need to extract it, so that it can be used in normal functions, like update_post_meta
      * or wc_get_order.
      */
     function get_real_order_id( $order_id ) {
@@ -528,7 +557,7 @@ class WC_Gateway_GestPay_Helper {
 
     /**
      * If the merchant is using a plugin which alters the original ID of the order
-     * we need to retrieve it, so that can be used to save the correct trasaction ID.
+     * we need to retrieve it, so that can be used to save the correct transaction ID.
      */
     function get_transaction_id( $order_id ) {
 
@@ -563,11 +592,6 @@ class WC_Gateway_GestPay_Helper {
         }
 
         return '';
-    }
-
-    function wc_empty_cart() {
-
-        WC()->cart->empty_cart();
     }
 
     function handle_transaction_details( $order, $order_id, $xml ) {
@@ -609,28 +633,48 @@ class WC_Gateway_GestPay_Helper {
      */
     function wc_order_completed( $order, $message, $tx_id = '' ) {
 
-        $order->payment_complete( $tx_id );
-        $order->add_order_note( $message );
-        $this->wc_empty_cart();
-        $this->log_add( 'ORDER COMPLETED: ' . $message );
+        if ( empty( $this->gw->completed_order_status ) ) {
+            $moto_status = 'completed';
+        }
+        else {
+            $moto_status = $this->gw->completed_order_status;
+        }
 
-        $this->maybe_refund_0_order_amount_fix( $order );
+        if ( ! $order->has_status( array( 'processing', 'completed' ) ) ) {
 
-        // FIX: under some circustances emails seems to not be fired. This force them to be sent.
-        if ( defined( 'WC_GATEWAY_GESTPAY_FORCE_SEND_EMAIL' ) && WC_GATEWAY_GESTPAY_FORCE_SEND_EMAIL ) {
-            $mailer = WC()->mailer();
-            $mails = $mailer->get_emails();
-            if ( ! empty( $mails ) ) {
-                foreach ( $mails as $mail ) {
-                    if ( ( $order->has_status( 'completed' ) && ($mail->id == 'customer_completed_order' || $mail->id == 'new_order') )
-                        || ( $order->has_status( 'processing' ) && ($mail->id == 'customer_processing_order' || $mail->id == 'new_order') ) ) {
-                        $mail->trigger( $order->get_id() );
-                  }
+            if ( $this->gw->is_moto_sep && $moto_status == 'onhold' ) {
+                $order->update_status( 'on-hold', $message );
+                $this->log_add( 'ORDER MOTO ON-HOLD: ' . $message );
+            }
+            elseif ( $this->gw->is_moto_sep && $moto_status == 'pending' ) {
+                $order->update_status( 'on-hold', $message );
+                $this->log_add( 'ORDER MOTO PENDING: ' . $message );
+            }
+            else {
+                $order->payment_complete( $tx_id );
+                $order->add_order_note( $message );
+                $this->log_add( 'ORDER COMPLETED: ' . $message );
+                $this->maybe_refund_0_order_amount_fix( $order );
+            }
+
+            WC()->cart->empty_cart();
+
+            // Under some circustances emails seems to not be fired. This force them to be sent.
+            if ( defined( 'WC_GATEWAY_GESTPAY_FORCE_SEND_EMAIL' ) && WC_GATEWAY_GESTPAY_FORCE_SEND_EMAIL ) {
+                $mailer = WC()->mailer();
+                $mails = $mailer->get_emails();
+                if ( ! empty( $mails ) ) {
+                    foreach ( $mails as $mail ) {
+                        if ( ( $order->has_status( 'completed' ) && ($mail->id == 'customer_completed_order' || $mail->id == 'new_order') )
+                            || ( $order->has_status( 'processing' ) && ($mail->id == 'customer_processing_order' || $mail->id == 'new_order') ) ) {
+                            $mail->trigger( $order->get_id() );
+                        }
+                    }
                 }
             }
         }
-        // \FIX
     }
+
 
     /**
      * Create the gateway form, loading the autosubmit javascript.

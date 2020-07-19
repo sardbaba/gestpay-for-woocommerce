@@ -4,7 +4,7 @@
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
  * Description: Abilita il sistema di pagamento GestPay by Axerve (Gruppo Banca Sella) in WooCommerce.
- * Version: 20200500.test
+ * Version: 20200719
  * Author: Axerve (Gruppo Banca Sella)
  * Author URI: https://www.axerve.com
  *
@@ -168,6 +168,10 @@ function init_wc_gateway_gestpay() {
             $this->force_recrypt  = "yes" === get_option( 'wc_gestpay_force_recrypt' );
             $this->force_check    = "yes" === get_option( 'wc_gestpay_force_check_gateway_response' );
             $this->debug          = "yes" === get_option( 'wc_gestpay_debug' );
+
+            // 2020-07
+            $this->is_moto_sep = "yes" === get_option( 'wc_gateway_gestpay_moto_sep' );
+            $this->completed_order_status = get_option( 'wc_gateway_gestpay_order_status', 'completed' );
 
             // Check compatibility
             if ( $this->is_valid_for_use() !== TRUE ) {
@@ -664,11 +668,22 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 }
 
                 $err_str  = sprintf( $this->strings['transaction_error'], $order_id, ' (' . $xml->ErrorCode . ') ' . $xml->ErrorDescription );
-                $order->update_status( 'failed', $err_str );
 
-                do_action( 'gestpay_after_order_failed', $order, $xml );
+                // #2020-07
+                $is_abandoned = $xml->ErrorCode == '1143' && $xml->ErrorDescription == 'Transazione abbandonata dal compratore';
+                $is_subscription_active = function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order ) && $order->has_status( 'active' );
+                if ( $is_abandoned && $is_subscription_active ) {
+                    // This is an abandoned change payment or also a manual renewal abandoned
+                    // of an active subscription: we must not set the subscription to failed.
+                    $this->Helper->log_add( "> SKIP > Cambio metodo pagamento abbandonato per una subscription attiva" );
+                }
+                else {
+                    $order->update_status( 'failed', $err_str );
 
-                $this->Helper->log_add( "[ERROR] " . $err_str );
+                    do_action( 'gestpay_after_order_failed', $order, $xml );
+
+                    $this->Helper->log_add( "[ERROR] " . $err_str );
+                }
             }
             elseif ( $order_status != 'completed' && $order_status != 'processing' ) {
 
@@ -885,3 +900,14 @@ function wc_gateway_gestpay_ajax_delete_s2s() {
     $Gestpay = new WC_Gateway_Gestpay();
     $Gestpay->Order_Actions->ajax_delete();
 }
+
+/**
+ * Add this action to listen for the order status manually changed
+ */
+add_action( 'woocommerce_order_edit_status', 'wc_gateway_gestpay_woocommerce_order_edit_status', 10, 2 );
+function wc_gateway_gestpay_woocommerce_order_edit_status( $order_id, $new_status ) {
+
+    $Gestpay = new WC_Gateway_Gestpay();
+    $Gestpay->Order_Actions->wc_order_edit_status( $order_id, $new_status );
+}
+

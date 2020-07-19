@@ -177,14 +177,14 @@ class WC_Settings_Tab_Gestpay {
 
             // ------------------------------------------------- Main options
             array(
-                'title' => 'Opzioni Gestpay',
+                'title' => 'Opzioni Gestpay - Axerve E-commerce Solutions',
                 'desc' => '',
                 'type' => 'title',
                 'id' => 'section0',
             ),
             array(
                 'title' => 'Versione account',
-                'desc' => '<br>Seleziona la versione del tuo account Gestpay.'.
+                'desc' => '<br>Seleziona la versione del tuo account Gestpay - Axerve E-commerce Solutions.'.
                     '<br>- La versione On-Site consente di effettuare i pagamenti nella pagina del checkout'.
                         ' e richiede che siano abilitati i servizi "Tokenization" e "Authorization". Sarà possibile utilizzare '. $wcs.
                     '<br>- La versione iFrame consente di effettuare i pagamenti nella pagina di pagamento di WooCommerce,'.
@@ -386,6 +386,25 @@ class WC_Settings_Tab_Gestpay {
                 'desc' => 'Invia anche il campo CVV (Card Verification Value) quando viene effettuata la richiesta del token. ATTENZIONE: se il campo è impostato come <i>Input</i> nel Back Office di Gestpay, questa opzione deve essere selezionata altrimenti si otterrà un errore.',
                 'id' => 'wc_gestpay_param_tokenization_send_cvv',
                 'default' => 'no',
+            ),
+            array( // 2020-07
+                'title' => 'Modalità separazione attiva',
+                'type' => 'checkbox',
+                'desc' => 'Seleziona se l\'account è impostato in modalità "separazione tra autorizzazione e conferma finanziaria".<br><b>Nel caso di contestualità tra autorizzazione e conferma finanziaria lasciare deselezionato in modo che lo stato dell\'ordine sia gestito in modo corretto</b>.',
+                'id' => 'wc_gateway_gestpay_moto_sep',
+                'default' => 'no',
+            ),
+            array( // 2020-07
+                'title' => 'Stato ordine in modalità separazione',
+                'type' => 'select',
+                'desc' => 'Seleziona lo stato che verrà impostato quando viene completato un ordine: utilizza questa opzione <b>SOLO</b> se hai impostato la <b>separazione tra autorizzazione e conferma finanziaria</b> nel backoffice Axerve.<br>Di default è impostato su "<b>Completato/In Lavorazione</b>" (se il prodotto è virtuale andrà direttamente su Completato, altrimenti su In Lavorazione); scegli "<b>In attesa di pagamento</b>" (Pending) oppure "<b>In sospeso</b>" (On-Hold) a seconda di come preferisci gestire lo stato di un ordine in caso di separazione tra autorizzazione e movimentazione.<br>Se imposti manualmente lo stato su "In Lavorazione" (Processing) oppure su "Completato" (Completed) verrà effettuata una chiamata Server-to-Server per movimentare (Settle) automaticamente la transazione precedentemente autorizzata; in modo analogo, se imposti lo stato su "Cancellato" o "Fallito" la transazione verrà annullata (Cancelled).',
+                'default' => 'completed',
+                'options' => array(
+                    'completed' => "Completato/In Lavorazione (Completed/Processing)",
+                    'pending' => "In attesa di pagamento (Pending)",
+                    'onhold' => "In sospeso (On-Hold)",
+                ),
+                'id' => 'wc_gateway_gestpay_order_status',
             ),
             array(
                 'type' => 'sectionend',
