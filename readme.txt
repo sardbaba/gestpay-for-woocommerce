@@ -67,6 +67,9 @@ Here is a list of filters and actions used in this plugin:
 
 == Changelog ==
 
+= 2020XXYY =
+* Improvement: Added a second attempt if an error occurs when getting the SOAP client.
+
 = 20200719 =
 * Checks: Verified compatibility with Wordpress 5.4, WooCommerce 4.2-4.3 and WooCommerce Subscriptions 3.0.4
 * New: Added ability to change the completed order status when using MOTO with separation and automatically handle the actions to be performed when the state of an order is manually changed.

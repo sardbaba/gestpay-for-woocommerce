@@ -833,7 +833,7 @@ HTML;
     /**
      * Create a SOAP client using the specified URL
      */
-    function get_soap_client( $url ) {
+    function get_soap_client( $url, $retry = true ) {
 
         try {
             $soapClientOptions = array(
@@ -846,8 +846,15 @@ HTML;
         }
         catch ( Exception $e ) {
             $err = sprintf( __( 'Soap Client Request Exception with error %s' ), $e->getMessage() );
-            $this->wc_add_error( $err );
             $this->log_add( '[FATAL ERROR]: ' . $err );
+
+            if ( $retry ) {
+                sleep(3);
+                $this->log_add( 'Retrying for SOAP Client error' );
+                return $this->get_soap_client( $url, false );
+            }
+
+            $this->wc_add_error( $err );
 
             return false;
         }
