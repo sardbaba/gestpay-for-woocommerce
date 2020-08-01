@@ -478,7 +478,8 @@ class Gestpay_Subscriptions {
                 );
             }
             else {
-                // @deprecated token as string and without expiry date values
+                // deprecated token as string and without expiry date values
+                // except for PayPal, which doesn't have an expiry date.
 
                 if ( ! empty( $this->saved_cards ) ) {
                     // user is logged in, try to match the saved token with the ones in the card section
@@ -493,8 +494,15 @@ class Gestpay_Subscriptions {
                     }
                 }
 
+                if ( $subscription->get_payment_method() == 'wc_gateway_gestpay_paypal' ) {
+                    $str_token = 'PayPal (' . $this->show_token( $token ) . ')';
+                }
+                else {
+                    $str_token = $this->show_token( $token );
+                }
+
                 // we don't know expiry date. Print just the token
-                return sprintf( __( 'Via %s', $this->textdomain ), $this->show_token( $token ) );
+                return sprintf( __( 'Via %s', $this->textdomain ), $str_token );
             }
         }
 

@@ -272,28 +272,4 @@ class Gestpay_Iframe {
         setcookie( GESTPAY_IFRAME_COOKIE_T_KEY, "", 1 );
     }
 
-    /**
-     * Maybe store the token.
-     */
-    function maybe_save_token( $xml_response, $order ) {
-        if ( ! $this->Gestpay->save_token ) {
-            $this->Gestpay->Helper->log_add( '[iFrame] TOKEN storage is disabled.' );
-            return;
-        }
-
-        $order_id = $order->get_id();
-
-        if ( ! $this->Helper->is_subscription_order( $order ) ) {
-            // With iFrame, there is no need to store the token if the order does not contains a subscription
-            // because it will not be used to pay other orders as is possible with the On-Site version.
-            $this->Gestpay->Helper->log_add( '[iFrame] Order #'.$order_id.' does not contains a subscription and the token will not be saved.' );
-            return;
-        }
-
-        $resp = $this->Helper->set_order_token( $order, $xml_response );
-        if ( empty( $resp ) ) {
-            $this->Helper->log_add( '[iFrame] Failed to save the token for Order #'.$order_id );
-        }
-    }
-
 }

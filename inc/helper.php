@@ -675,6 +675,29 @@ class WC_Gateway_GestPay_Helper {
         }
     }
 
+    /**
+     * Maybe store the token.
+     */
+    function maybe_save_token( $order, $xml_response, $log_prefix = '' ) {
+        if ( ! $this->gw->save_token ) {
+            $this->log_add( $log_prefix.'TOKEN storage is disabled.' );
+            return;
+        }
+
+        $order_id = $order->get_id();
+
+        if ( ! $this->is_subscription_order( $order ) ) {
+            // With PayPal, there is no need to store the token if the order does not contains a subscription
+            // because it will not be used to pay other orders as is possible with the On-Site version.
+            $this->log_add( $log_prefix.'Order #'.$order_id.' does not contains a subscription and the token will not be saved.' );
+            return;
+        }
+
+        $resp = $this->set_order_token( $order, $xml_response );
+        if ( empty( $resp ) ) {
+            $this->log_add( $log_prefix.'Failed to save the token for Order #'.$order_id );
+        }
+    }
 
     /**
      * Create the gateway form, loading the autosubmit javascript.

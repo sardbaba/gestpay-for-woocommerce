@@ -68,6 +68,7 @@ Here is a list of filters and actions used in this plugin:
 == Changelog ==
 
 = 2020XXYY =
+* Fix: Payment method change allow to correctly change the associated token.
 * Improvement: Added a second attempt if an error occurs when getting the SOAP client.
 
 = 20200719 =

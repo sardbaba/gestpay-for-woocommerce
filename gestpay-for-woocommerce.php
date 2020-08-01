@@ -690,7 +690,10 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 // ------ Transaction OK! But do not process an already completed order.
 
                 if ( $this->is_iframe ) {
-                    $this->IFrame->maybe_save_token( $xml, $order );
+                    $this->Helper->maybe_save_token( $order, $xml, '[iFrame] ' );
+                }
+                elseif ( $order->get_payment_method() == 'wc_gateway_gestpay_paypal' ) {
+                    $this->Helper->maybe_save_token( $order, $xml, '[PayPal] ' );
                 }
 
                 $txn = $this->Helper->handle_transaction_details( $order, $order_id, $xml );

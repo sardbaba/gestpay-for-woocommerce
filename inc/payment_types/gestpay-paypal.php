@@ -25,8 +25,6 @@ class WC_Gateway_Gestpay_PAYPAL extends WC_Gateway_Gestpay {
             include_once $this->Helper->plugin_dir_path . '/inc/class-gestpay-subscriptions.php';
             $this->Subscr = new Gestpay_Subscriptions( $this );
 
-            add_action( 'gestpay_after_order_completed', array( $this, 'maybe_save_token_after_order_completed' ), 10, 2 );
-
             // process scheduled subscription payments
             add_action( 'woocommerce_scheduled_subscription_payment_wc_gateway_gestpay_paypal', array( $this->Subscr, 'process_subscription_renewal_payment' ), 10, 2 );
         }
@@ -47,44 +45,13 @@ class WC_Gateway_Gestpay_PAYPAL extends WC_Gateway_Gestpay {
      */
     public function add_extra_encrypt_parameters( $params, $order ) {
 
-        if ( $this->is_payment_type_ok( $params ) && $this->Helper->is_a_subscription() && function_exists( 'wcs_cart_price_string' ) ) {
-
+        $is_sub_ok = ! wcs_order_contains_renewal( $order ) && ( $this->Helper->is_a_subscription() || $this->Helper->is_subscription_order( $order ) );
+        if ( $this->is_payment_type_ok( $params ) && $is_sub_ok && function_exists( 'wcs_cart_price_string' ) ) {
             $cart = WC()->cart;
             $desc = wp_kses_post( wcs_cart_price_string( $cart->get_cart_subtotal(), $cart ) );
-
             $params->payPalBillingAgreementDescription = substr( strip_tags( $desc ), 0, 127 ); // Max lenght 127
         }
 
         return $params;
-    }
-
-    /**
-     * Maybe store the token.
-     * @see also maybe_save_token() @ /inc/class-gestpay-iframe.php
-     */
-    function maybe_save_token_after_order_completed( $order, $xml_response ) {
-
-        if ( $order->get_payment_method() != 'wc_gateway_gestpay_paypal' ) {
-            return;
-        }
-
-        if ( ! $this->save_token ) {
-            $this->Helper->log_add( '[PayPal] TOKEN storage is disabled.' );
-            return;
-        }
-
-        $order_id = $order->get_id();
-
-        if ( ! $this->Helper->is_subscription_order( $order ) ) {
-            // With PayPal, there is no need to store the token if the order does not contains a subscription
-            // because it will not be used to pay other orders as is possible with the On-Site version.
-            $this->Helper->log_add( '[PayPal] Order #'.$order_id.' does not contains a subscription and the token will not be saved.' );
-            return;
-        }
-
-        $resp = $this->Helper->set_order_token( $order, $xml_response );
-        if ( empty( $resp ) ) {
-            $this->Helper->log_add( '[PayPal] Failed to save the token for Order #'.$order_id );
-        }
     }
 }
