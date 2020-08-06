@@ -494,15 +494,22 @@ class Gestpay_Subscriptions {
                     }
                 }
 
-                if ( $subscription->get_payment_method() == 'wc_gateway_gestpay_paypal' ) {
-                    $str_token = 'PayPal (' . $this->show_token( $token ) . ')';
+                $token_shown = $this->show_token( $token );
+
+                if ( $token_shown != '**********' ) {
+                    if ( $subscription->get_payment_method() == 'wc_gateway_gestpay_paypal' ) {
+                        $str_token = 'PayPal (' . $token_shown . ')';
+                    }
+                    else {
+                        $str_token = $token_shown;
+                    }
+
+                    // we don't know expiry date. Print just the token
+                    return sprintf( __( 'Via %s', $this->textdomain ), $str_token );
                 }
                 else {
-                    $str_token = $this->show_token( $token );
+                    return 'N/A';
                 }
-
-                // we don't know expiry date. Print just the token
-                return sprintf( __( 'Via %s', $this->textdomain ), $str_token );
             }
         }
 
