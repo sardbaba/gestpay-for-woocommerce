@@ -3,7 +3,7 @@ Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, axerve, iframe, direct payment gateway
 Requires at least: 4.0.1
 Tested up to: 5.4
-Stable tag: 20200719
+Stable tag: 20200811
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 3.0
@@ -67,8 +67,9 @@ Here is a list of filters and actions used in this plugin:
 
 == Changelog ==
 
-= 2020XXYY =
-* Fix: Payment method change allow to correctly change the associated token.
+= 20200811 =
+* Fix: 3DS2 need authTimestamp to YYYYMMDDHHMM; removed ua informations from AuthData.
+* Fix on payment method change for Subscriptions: allow to correctly change the associated token.
 * Improvement: Added a second attempt if an error occurs when getting the SOAP client.
 
 = 20200719 =

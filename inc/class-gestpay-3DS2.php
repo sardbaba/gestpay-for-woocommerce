@@ -71,12 +71,8 @@ class Gestpay_3DS2 {
             if ( is_array( $sessions ) ) {
                 $last_login = reset( $sessions );
                 if ( !empty( $last_login['login'] ) ) {
-                    $profileDetails['authTimestamp'] = $last_login['login'];
-                }
-
-                // Maybe also add UA informations
-                if ( !empty( $last_login['ua'] ) ) {
-                    $profileDetails['authData'] = $last_login['ua'];
+                    // Fix: format timestamp to YYYYMMDDHHMM
+                    $profileDetails['authTimestamp'] = date( 'YmdHi', $last_login['login'] );
                 }
             }
         }
