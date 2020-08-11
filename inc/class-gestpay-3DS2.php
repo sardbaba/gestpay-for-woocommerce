@@ -75,6 +75,8 @@ class Gestpay_3DS2 {
                     $profileDetails['authTimestamp'] = date( 'YmdHi', $last_login['login'] );
                 }
             }
+
+            $profileDetails['authData'] = ''; // Fix: removed ua
         }
 
         // Other values (03, 04, ...) are not applicable. 01 if anonymous, 02 if logged in
