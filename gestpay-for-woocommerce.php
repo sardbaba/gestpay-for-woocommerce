@@ -259,7 +259,7 @@ function init_wc_gateway_gestpay() {
                 }
             }
 
-            $this->ws_S2S_resp_url = get_bloginfo( 'url' ) . '/?wc-api=' . GESTPAY_WC_API;
+            $this->ws_S2S_resp_url = rtrim(get_bloginfo( 'url' ), '/') . '/?wc-api=' . GESTPAY_WC_API;
 
             // Load the S2S actions for the order.
             include_once 'inc/class-gestpay-order-actions.php';

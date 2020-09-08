@@ -27,6 +27,8 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
     </div>
 </div>
 
+<?php do_action( 'gestpay_my_cards_template_before_table' ); ?>
+
 <table class="shop_table my-account-gestpay-s2s-saved-cards">
 
     <thead>
@@ -111,6 +113,8 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
     </tbody>
 
 </table>
+
+<?php do_action( 'gestpay_my_cards_template_after_table' ); ?>
 
 <script type="text/javascript">
 

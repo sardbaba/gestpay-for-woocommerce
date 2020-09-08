@@ -44,6 +44,8 @@ Here is a list of filters and actions used in this plugin:
 * gestpay_order_delete_fail
 * gestpay_after_s2s_order_failed
 * gestpay_on_renewal_payment_failure
+* gestpay_my_cards_template_before_table
+* gestpay_my_cards_template_after_table
 
 = Filters =
 

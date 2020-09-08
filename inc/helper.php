@@ -511,6 +511,8 @@ class WC_Gateway_GestPay_Helper {
             return FALSE;
         }
 
+        return FALSE;
+
         $this->log_add( "Set token ". $token['token'] ." for order: " . $order_id );
 
         return update_post_meta( $order_id, GESTPAY_META_TOKEN, $token );
