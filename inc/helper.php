@@ -864,12 +864,13 @@ HTML;
             $soapClientOptions = array(
                 'user_agent' => 'Wordpress/GestpayForWoocommerce',
                 'cache_wsdl' => WSDL_CACHE_NONE,
-                'trace' => 1
+                'trace' => 1,
+                'exceptions' => true
             );
 
             $client = new SoapClient( $url, $soapClientOptions );
         }
-        catch ( Exception $e ) {
+        catch ( SoapFault $e ) {
             $err = sprintf( __( 'Soap Client Request Exception with error %s' ), $e->getMessage() );
             $this->log_add( '[FATAL ERROR]: ' . $err );
 
