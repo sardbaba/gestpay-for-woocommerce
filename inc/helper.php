@@ -228,6 +228,8 @@ class WC_Gateway_GestPay_Helper {
      */
     function get_custominfo( $param_custominfo ) {
 
+        $param_custominfo = str_replace( "\r", '', $param_custominfo );
+
         $custom_info = array();
 
         // Split the textarea content by each row
@@ -868,7 +870,7 @@ HTML;
 
             $client = new SoapClient( $url, $soapClientOptions );
         }
-        catch ( SoapFault $e ) {
+        catch ( Exception | SoapFault $e ) {
             $err = sprintf( __( 'Soap Client Request Exception with error %s' ), $e->getMessage() );
             $this->log_add( '[FATAL ERROR]: ' . $err );
 
