@@ -3,7 +3,7 @@ Contributors: easynolo
 Tags: woocommerce, payment gateway, payment, credit card, gestpay, gestpay starter, gestpay pro, gestpay professional, banca sella, sella.it, easynolo, axerve, iframe, direct payment gateway
 Requires at least: 4.0.1
 Tested up to: 5.4
-Stable tag: 20200811
+Stable tag: 20201018
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 3.0
@@ -33,6 +33,7 @@ Here is a list of filters and actions used in this plugin:
 * gestpay_before_processing_order
 * gestpay_after_order_completed
 * gestpay_after_order_failed
+* gestpay_after_order_pending
 * gestpay_before_order_settle
 * gestpay_order_settle_success
 * gestpay_order_settle_fail
@@ -68,6 +69,12 @@ Here is a list of filters and actions used in this plugin:
 3. Read the [usage documentation on Gestpay](http://docs.gestpay.it/plugins/gestpay-for-woocommerce/ "Gestpay for WooCommerce - Usage Documentation").
 
 == Changelog ==
+
+= 20201018 =
+* Improvement: added management of response cases XX (used with MyBank) and added the action gestpay_after_order_pending
+* Improvement: Changed catch of Soap Fault Error.
+* Improvement: removed "\r" from the CustomInfo parameter.
+* Improvement: added actions gestpay_my_cards_template_before_table and gestpay_my_cards_template_after_table to add text before/after the list of saved card-tokens (s2s version)
 
 = 20200811 =
 * Fix: 3DS2 need authTimestamp to YYYYMMDDHHMM; removed ua informations from AuthData.

@@ -4,7 +4,7 @@
  * Plugin Name: Gestpay for WooCommerce
  * Plugin URI: http://wordpress.org/plugins/gestpay-for-woocommerce/
  * Description: Abilita il sistema di pagamento GestPay by Axerve (Gruppo Banca Sella) in WooCommerce.
- * Version: 20200811
+ * Version: 20201018
  * Author: Axerve (Gruppo Banca Sella)
  * Author URI: https://www.axerve.com
  *
@@ -12,7 +12,7 @@
  * WC tested up to: 4.0
  *
  * Copyright: © 2013-2016 Mauro Mascia (info@mauromascia.com)
- * Copyright: © 2017-2020 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
+ * Copyright: © 2017-2021 Axerve S.p.A. - Gruppo Banca Sella (https://www.axerve.com - ecommerce@sella.it)
  *
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -634,6 +634,9 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                 die();
             }
 
+            $err = "INFO " . var_export( $xml, true );
+            $this->Helper->log_add( $err );
+
             // Retrieve the order id (if different) and the order object
             $order_id = $this->Helper->get_real_order_id( $raw_order_id );
             $order = wc_get_order( $order_id );
@@ -656,12 +659,12 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
             }
 
             $order_status = $order->get_status();
+            $not_completed = $order_status != 'completed' && $order_status != 'processing';
 
             do_action( 'gestpay_before_processing_order', $order );
 
             if ( (string)$xml->TransactionResult != "OK" ) {
-
-                // ------ Transaction is failed.
+                // ------ Transaction is failed (or is pending - XX - when using for example MyBank)
 
                 if ( ! $is_gestpay_s2s_call ) {
                     $this->Helper->log_add( "[PAYMENT ERROR] Decrypted response:", $xml );
@@ -677,15 +680,19 @@ jQuery( document.body ).on( 'updated_checkout payment_method_selected', function
                     // of an active subscription: we must not set the subscription to failed.
                     $this->Helper->log_add( "> SKIP > Cambio metodo pagamento abbandonato per una subscription attiva" );
                 }
+                elseif ( $not_completed && (string)$xml->TransactionResult == "XX" ) {
+                    $mess = "XX Response";
+                    $order->update_status( 'on-hold', $mess );
+                    $this->Helper->log_add( "[INFO] " . $mess );
+                    do_action( 'gestpay_after_order_pending', $order, $xml );
+                }
                 else {
                     $order->update_status( 'failed', $err_str );
-
-                    do_action( 'gestpay_after_order_failed', $order, $xml );
-
                     $this->Helper->log_add( "[ERROR] " . $err_str );
+                    do_action( 'gestpay_after_order_failed', $order, $xml );
                 }
             }
-            elseif ( $order_status != 'completed' && $order_status != 'processing' ) {
+            elseif ( $not_completed ) {
 
                 // ------ Transaction OK! But do not process an already completed order.
 
@@ -913,4 +920,3 @@ function wc_gateway_gestpay_woocommerce_order_edit_status( $order_id, $new_statu
     $Gestpay = new WC_Gateway_Gestpay();
     $Gestpay->Order_Actions->wc_order_edit_status( $order_id, $new_status );
 }
-
